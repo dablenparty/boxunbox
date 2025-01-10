@@ -42,6 +42,8 @@ struct StowArgs {
     /// Package to stow. Can be a single file or a directory.
     #[arg(value_parser = parse_and_expand_pathbuf)]
     pub package: PathBuf,
+    #[arg(default_value = "~", value_parser = parse_and_expand_pathbuf)]
+    pub target: PathBuf,
 }
 
 fn main() -> anyhow::Result<()> {
