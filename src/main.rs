@@ -1,5 +1,6 @@
 use std::{path::PathBuf, str::FromStr};
 
+use anyhow::Context;
 use clap::Parser;
 use directories_next::UserDirs;
 
@@ -12,8 +13,7 @@ use directories_next::UserDirs;
 ///
 /// # Errors
 ///
-/// No errors should occur. It returns a `Result` because that is the required signature for a `clap`
-/// value parser, which this is.
+/// An error will be returned if the path cannot be canonicalized.
 ///
 /// # Panics
 ///
@@ -31,7 +31,10 @@ fn parse_and_expand_pathbuf(s: &str) -> Result<PathBuf, String> {
         PathBuf::from_str(s).unwrap_or_else(|_| unreachable!("Failed to convert &str to PathBuf"))
     };
 
-    Ok(expanded)
+    expanded
+        .canonicalize()
+        .with_context(|| format!("failed to canonicalize: {expanded:?}"))
+        .map_err(|e| e.to_string())
 }
 
 #[derive(Debug, Parser)]
