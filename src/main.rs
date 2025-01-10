@@ -44,6 +44,8 @@ struct StowArgs {
     pub package: PathBuf,
     #[arg(default_value = "~", value_parser = parse_and_expand_pathbuf)]
     pub target: PathBuf,
+    #[arg(short = 'd', long, default_value_t = false)]
+    pub include_dirs: bool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -51,6 +53,32 @@ fn main() -> anyhow::Result<()> {
 
     #[cfg(debug_assertions)]
     println!("{cli_args:#?}");
+
+    let StowArgs {
+        package,
+        target,
+        include_dirs,
+    } = cli_args;
+
+    if !package.is_dir() {
+        anyhow::bail!("{package:?} is not a directory");
+    }
+
+    for res in package.read_dir()? {
+        let entry = res?;
+
+        if !include_dirs && entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
+            continue;
+        }
+
+        let path = entry.path();
+        let link_path = target.join(entry.file_name());
+
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(path, link_path)?;
+        }
+    }
 
     Ok(())
 }
