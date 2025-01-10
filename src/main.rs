@@ -1,4 +1,8 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{
+    fs::DirEntry,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use anyhow::Context;
 use clap::Parser;
@@ -37,7 +41,7 @@ fn parse_and_expand_pathbuf(s: &str) -> Result<PathBuf, String> {
         .map_err(|e| e.to_string())
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, Clone)]
 struct StowArgs {
     /// Package to stow. Can be a single file or a directory.
     #[arg(value_parser = parse_and_expand_pathbuf)]
@@ -48,6 +52,40 @@ struct StowArgs {
     pub include_dirs: bool,
 }
 
+/// Stows a package entry in `target`. The `pkg_entry`'s file name is used for the name of the symlink.
+///
+/// # Arguments
+///
+/// - `pkg_entry` - The `DirEntry` to stow.
+/// - `target` - The `&Path` to stow in. Must be a directory.
+fn stow_package_entry(pkg_entry: &DirEntry, target: &Path) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        pkg_entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false),
+        "`{}`={pkg_entry:?} is not a directory!",
+        stringify!(pkg_entry),
+    );
+
+    let path = pkg_entry.path();
+    let link_path = target.join(pkg_entry.file_name());
+
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(path, link_path)?;
+    }
+
+    #[cfg(windows)]
+    {
+        todo!("implement windows?")
+    }
+
+    #[cfg(all(not(windows), not(unix)))]
+    {
+        std::fs::soft_link(path, link_path)?;
+    }
+
+    Ok(())
+}
+
 fn main() -> anyhow::Result<()> {
     let cli_args = StowArgs::parse();
 
@@ -55,9 +93,9 @@ fn main() -> anyhow::Result<()> {
     println!("{cli_args:#?}");
 
     let StowArgs {
-        package,
-        target,
         include_dirs,
+        ref package,
+        target,
     } = cli_args;
 
     if !package.is_dir() {
@@ -65,18 +103,19 @@ fn main() -> anyhow::Result<()> {
     }
 
     for res in package.read_dir()? {
-        let entry = res?;
-
-        if !include_dirs && entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
-            continue;
-        }
-
-        let path = entry.path();
-        let link_path = target.join(entry.file_name());
-
-        #[cfg(unix)]
-        {
-            std::os::unix::fs::symlink(path, link_path)?;
+        match res {
+            Ok(entry) => {
+                if !include_dirs && entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
+                    return Ok(());
+                }
+                if let Err(error) = stow_package_entry(&entry, &target) {
+                    eprintln!(
+                        "error stowing {}: {error:?}",
+                        entry.file_name().to_string_lossy()
+                    );
+                }
+            }
+            Err(error) => eprintln!("error reading entry: {error:?}"),
         }
     }
 
