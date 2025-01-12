@@ -1,6 +1,7 @@
 use std::{path::PathBuf, str::FromStr};
 
 use anyhow::Context;
+use clap::{Parser, ValueHint};
 use directories_next::UserDirs;
 
 /// Parses `&str` into a `PathBuf`. If the path begins with a `~`, it is expanded into the users
@@ -34,4 +35,17 @@ pub fn parse_and_expand_pathbuf(s: &str) -> Result<PathBuf, String> {
         .canonicalize()
         .with_context(|| format!("failed to canonicalize: {expanded:?}"))
         .map_err(|e| e.to_string())
+}
+
+#[derive(Debug, Parser, Clone)]
+pub struct BoxUnboxArgs {
+    /// Package to `box` or `unbox`. Can be a single file or a directory.
+    #[arg(value_parser = parse_and_expand_pathbuf, value_hint = ValueHint::AnyPath)]
+    pub package: PathBuf,
+    /// Target directory where the symlinks are stored. Must be a directory.
+    #[arg(default_value = "~", value_parser = parse_and_expand_pathbuf, value_hint = ValueHint::DirPath)]
+    pub target: PathBuf,
+    /// Include directories.
+    #[arg(short = 'd', long, default_value_t = false)]
+    pub include_dirs: bool,
 }

@@ -1,24 +1,7 @@
-use std::{
-    fs::DirEntry,
-    path::{Path, PathBuf},
-};
+use std::{fs::DirEntry, path::Path};
 
-use boxunbox::cli::parse_and_expand_pathbuf;
-use clap::{Parser, ValueHint};
-
-/// `box`es a directory back up after being `unbox`ed. Iterates over the files in `package` and removes all matching symlinks from `target`.
-#[derive(Debug, Parser, Clone)]
-struct BoxArgs {
-    /// Package to box. Can be a single file or a directory.
-    #[arg(value_parser = parse_and_expand_pathbuf, value_hint = ValueHint::AnyPath)]
-    pub package: PathBuf,
-    /// Target to box up. Must be a directory.
-    #[arg(default_value = "~", value_parser = parse_and_expand_pathbuf, value_hint = ValueHint::DirPath)]
-    pub target: PathBuf,
-    /// Include directories when unboxing.
-    #[arg(short = 'd', long, default_value_t = false)]
-    pub include_dirs: bool,
-}
+use boxunbox::cli::BoxUnboxArgs;
+use clap::Parser;
 
 /// Boxes a package entry up from `target`. The `pkg_entry`'s file name is used to make the symlink
 /// path.
@@ -41,12 +24,12 @@ fn box_package_entry(pkg_entry: &DirEntry, target: &Path) -> anyhow::Result<()> 
 }
 
 fn main() -> anyhow::Result<()> {
-    let cli_args = BoxArgs::parse();
+    let cli_args = BoxUnboxArgs::parse();
 
     #[cfg(debug_assertions)]
     println!("cli_args={cli_args:#?}");
 
-    let BoxArgs {
+    let BoxUnboxArgs {
         package,
         target,
         include_dirs,
