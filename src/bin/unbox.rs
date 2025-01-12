@@ -100,7 +100,7 @@ fn main() -> anyhow::Result<()> {
         target,
     } = cli_args;
 
-    anyhow::ensure!(!package.is_dir(), "{package:?} is not a directory");
+    anyhow::ensure!(package.is_dir(), "{package:?} is not a directory");
 
     for res in package.read_dir()? {
         match res {
