@@ -7,7 +7,7 @@ use clap::Parser;
 ///
 /// # Arguments
 ///
-/// - `pkg_entry` - The `DirEntry` to unbox.
+/// - `pkg_entry` - The [`DirEntry`] to unbox.
 /// - `target` - The `&Path` to unbox in. Must be a directory.
 ///
 /// # Errors
