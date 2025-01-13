@@ -21,6 +21,9 @@ use directories_next::UserDirs;
 /// fails, although neither should ever happen.
 pub fn parse_and_expand_pathbuf(s: &str) -> Result<PathBuf, String> {
     let expanded = if let Some(rest) = s.strip_prefix('~') {
+        // strip leading `/` if it exists, otherwise it will be interpreted as root when
+        // `push`ing to a `PathBuf`
+        let rest = rest.strip_prefix('/').unwrap_or(rest);
         let mut p = UserDirs::new()
             .unwrap_or_else(|| unreachable!("Failed to locate user home directory"))
             .home_dir()
