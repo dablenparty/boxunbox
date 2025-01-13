@@ -1,7 +1,6 @@
 use std::{fs::DirEntry, path::Path};
 
-use anyhow::Context;
-use boxunbox::{cli::BoxUnboxArgs, get_package_entries, PackageEntry};
+use boxunbox::{cli::BoxUnboxArgs, get_package_entries, parse_rc_file, PackageEntry};
 use clap::Parser;
 
 /// Boxes a package entry up from `target`. The `pkg_entry`'s file name is used to make the symlink
@@ -30,7 +29,19 @@ fn main() -> anyhow::Result<()> {
     #[cfg(debug_assertions)]
     println!("cli_args={cli_args:#?}");
 
-    let target = cli_args.target.as_path();
+    let BoxUnboxArgs {
+        package, target, ..
+    } = &cli_args;
+
+    let rc_path = package.join(".unboxrc");
+    if rc_path.exists() {
+        let rc_args = parse_rc_file(rc_path)?;
+
+        #[cfg(debug_assertions)]
+        println!("parsed rc file with args: {rc_args:#?}");
+
+        // TODO: combine RC file and command line arguments
+    }
 
     for res in get_package_entries(&cli_args)? {
         match res {
