@@ -51,4 +51,7 @@ pub struct BoxUnboxArgs {
     /// Include directories.
     #[arg(short = 'd', long, default_value_t = false)]
     pub include_dirs: bool,
+    /// Dry-run. Do not create/remove any symlinks.
+    #[arg(short = None, long, default_value_t = false)]
+    pub dry_run: bool,
 }

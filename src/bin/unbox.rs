@@ -44,7 +44,10 @@ fn main() -> anyhow::Result<()> {
     println!("{cli_args:#?}");
 
     let BoxUnboxArgs {
-        package, target, ..
+        dry_run,
+        package,
+        target,
+        ..
     } = &cli_args;
 
     let rc_path = package.join(".unboxrc");
@@ -59,6 +62,12 @@ fn main() -> anyhow::Result<()> {
 
     for res in get_package_entries(&cli_args)? {
         match res {
+            Ok(pkg_entry) if *dry_run => {
+                println!(
+                    "unboxing {:?} -> {target:?}",
+                    pkg_entry.fs_entry.path().display()
+                );
+            }
             Ok(pkg_entry) => {
                 let PackageEntry { fs_entry } = pkg_entry;
                 if let Err(error) = unbox_package_entry(&fs_entry, target) {
