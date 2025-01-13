@@ -1,7 +1,7 @@
 use std::{fs::DirEntry, path::Path};
 
 use anyhow::Context;
-use boxunbox::cli::BoxUnboxArgs;
+use boxunbox::{cli::BoxUnboxArgs, get_package_entries, PackageEntry};
 use clap::Parser;
 
 /// Unboxes a package entry in `target`. The `pkg_entry`'s file name is used for the name of the symlink.
@@ -44,27 +44,16 @@ fn main() -> anyhow::Result<()> {
     #[cfg(debug_assertions)]
     println!("{cli_args:#?}");
 
-    let BoxUnboxArgs {
-        include_dirs,
-        package,
-        target,
-    } = cli_args;
+    let target = cli_args.target.as_path();
 
-    anyhow::ensure!(package.is_dir(), "{package:?} is not a directory");
-
-    for res in package
-        .read_dir()
-        .with_context(|| format!("Failed to read directory: {package:?}"))?
-    {
+    for res in get_package_entries(&cli_args)? {
         match res {
-            Ok(entry) => {
-                if !include_dirs && entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
-                    return Ok(());
-                }
-                if let Err(error) = unbox_package_entry(&entry, &target) {
+            Ok(pkg_entry) => {
+                let PackageEntry { fs_entry } = pkg_entry;
+                if let Err(error) = unbox_package_entry(&fs_entry, target) {
                     eprintln!(
                         "error unboxing {}: {error:?}",
-                        entry.file_name().to_string_lossy()
+                        fs_entry.file_name().to_string_lossy()
                     );
                 }
             }
