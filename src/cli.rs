@@ -43,7 +43,7 @@ pub struct BoxUnboxArgs {
     #[arg(value_parser = parse_and_expand_pathbuf, value_hint = ValueHint::AnyPath)]
     pub package: PathBuf,
     /// Target directory where the symlinks are stored. Must be a directory.
-    #[arg(default_value = "~", value_parser = parse_and_expand_pathbuf, value_hint = ValueHint::DirPath)]
+    #[arg(short, long, default_value = "~", value_parser = parse_and_expand_pathbuf, value_hint = ValueHint::DirPath)]
     pub target: PathBuf,
     /// Include directories.
     #[arg(short = 'd', long, default_value_t = false)]
