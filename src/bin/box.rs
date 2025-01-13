@@ -1,5 +1,6 @@
 use std::{fs::DirEntry, path::Path};
 
+use anyhow::Context;
 use boxunbox::cli::BoxUnboxArgs;
 use clap::Parser;
 
@@ -37,7 +38,10 @@ fn main() -> anyhow::Result<()> {
 
     anyhow::ensure!(package.is_dir(), "{package:?} is not a directory");
 
-    for res in package.read_dir()? {
+    for res in package
+        .read_dir()
+        .with_context(|| format!("Failed to read directory: {package:?}"))?
+    {
         match res {
             Ok(entry) => {
                 if !include_dirs && entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
