@@ -71,9 +71,10 @@ pub fn get_package_entries(
 ///
 /// An error is returned for any of the following conditions:
 ///
-/// - `file_path` cannot be read.
+/// - `file_path` cannot be read (see [`std::fs::read_to_string`]).
 /// - `file_path` is not valid Unicode.
-/// -
+/// - The current working directory cannot be determined or changed.
+///     - The CWD needs to be changed so that relative paths get canonicalized properly
 pub fn parse_rc_file<P: AsRef<Path>>(file_path: P) -> anyhow::Result<BoxUnboxArgs> {
     let file_path = file_path.as_ref();
 
@@ -91,11 +92,21 @@ pub fn parse_rc_file<P: AsRef<Path>>(file_path: P) -> anyhow::Result<BoxUnboxArg
         .flat_map(|s| s.split_terminator(' '))
         .collect::<Vec<_>>();
 
-    // prepend the package name since clap requires a prog name to parse args properly. it won't
-    // get used.
+    /*
+    I use a custom PathBuf parser that expands `~` and canonicalizes the path; however, that
+    assumes that the path is being canonicalized from the dierctory the program was called
+    from (i.e. the `cwd`). RC files are in the _package_ dirs, so the `cwd` is set to the
+    package dir while parsing the RC file, then reset when done.
+    */
+    let old_cwd = std::env::current_dir()?;
+    std::env::set_current_dir(file_path.parent().unwrap())?;
+
+    // prepend the package name since clap requires a prog name to parse args properly.
     let parsed_args =
         BoxUnboxArgs::try_parse_from(iter::once(env!("CARGO_PKG_NAME")).chain(combined_args))
             .with_context(|| format!("Failed to parse args from rc file: {file_path:?}"))?;
+
+    std::env::set_current_dir(old_cwd)?;
 
     Ok(parsed_args)
 }
