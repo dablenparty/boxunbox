@@ -1,4 +1,9 @@
-use std::{fs::DirEntry, iter, path::Path};
+use std::{
+    fs::{DirEntry, File, OpenOptions},
+    io::{BufRead, BufReader, Read},
+    iter,
+    path::Path,
+};
 
 use anyhow::Context;
 use clap::Parser;
@@ -60,6 +65,93 @@ pub fn get_package_entries(
     Ok(pkg_entries)
 }
 
+/// Parse and tokenize a `.unboxrc` file. Arguments are split by whitespace while respecting
+/// quotes, albeit simply.
+///
+/// # Arguments
+///
+/// - `file_path` - [`Path`] to the `.unboxrc` file.
+///
+/// # Errors
+///
+/// An error is returned in any of the following situations:
+///
+/// - `file_path` cannot be opened (see [`std::fs::OpenOptions::open`])
+fn tokenize_rc_file<P: AsRef<Path>>(file_path: P) -> anyhow::Result<Vec<String>> {
+    // Option holding the last quote character found
+    let mut last_quote = None;
+    // open in read-only mode
+    let mut combined_args: Vec<String> = vec![];
+    let mut current_token = String::new();
+
+    let fp = File::open(file_path)?;
+    let reader = BufReader::new(fp);
+
+    // split on lines for ease of use
+    for (line_num, line) in reader.lines().enumerate() {
+        let line = line?;
+        let mut chars = line.chars().peekable();
+
+        while let Some(c) = chars.next() {
+            /*
+            The entire tokenizer is basically this match statement. It works as follows:
+            `c` is appended to `current_token`. If `c` is whitespace, then `current_token` is
+            saved and cleared and `c` is skipped. If `c` is a quote, then everything after
+            (including whitespace) is assumed to be part of the same token. If no matching
+            closing quote is found, an error is raised. Spaces and other characters can be
+            escaped with a backslash `\`.
+            */
+            match c {
+                '"' | '\'' | '`' => {
+                    if let Some(q) = last_quote {
+                        // remove the last quote if we found its match (string is complete)
+                        if q == c {
+                            let _ = last_quote.take();
+                        } else {
+                            current_token.push(c);
+                        }
+                    } else {
+                        last_quote = Some(c);
+                    }
+                }
+                '\\' if last_quote.is_some() => {
+                    if let Some(next_char) = chars.peek() {
+                        current_token.push(*next_char);
+                        chars.next(); // Consume the peeked character
+                    } else {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            format!("Unterminated escape sequence at line {}", line_num),
+                        )
+                        .into());
+                    }
+                }
+                _ if last_quote.is_none()
+                    && c.is_whitespace()
+                    && !current_token.trim().is_empty() =>
+                {
+                    // this token is done, save it and clear the buffer for the next one
+                    combined_args.push(current_token.clone());
+                    current_token.clear();
+                }
+                _ => current_token.push(c),
+            }
+        }
+
+        if last_quote.is_none() && !current_token.trim().is_empty() {
+            combined_args.push(current_token.clone());
+            current_token.clear();
+        }
+    }
+
+    if let Some(q) = last_quote {
+        // TODO: better error here
+        anyhow::bail!("Bad .unboxrc file format: found unbalanced quote {q:?}");
+    }
+
+    Ok(combined_args)
+}
+
 /// Parse a `.unboxrc` file and return the arguments. Arguments can either be on one line, separate
 /// lines, or a combination of the two.
 ///
@@ -78,14 +170,7 @@ pub fn get_package_entries(
 pub fn parse_rc_file<P: AsRef<Path>>(file_path: P) -> anyhow::Result<BoxUnboxRcArgs> {
     let file_path = file_path.as_ref();
 
-    let rc_text = std::fs::read_to_string(file_path)?;
-
-    // split the args on newlines, then for each line, split on spaces and flatten.
-    let combined_args = rc_text
-        .split_terminator('\n')
-        .map(|s| s.trim())
-        .flat_map(|s| s.split_terminator(' '))
-        .collect::<Vec<_>>();
+    let combined_args = tokenize_rc_file(file_path)?;
 
     /*
     I use a custom PathBuf parser that expands `~` and canonicalizes the path; however, that
@@ -98,9 +183,10 @@ pub fn parse_rc_file<P: AsRef<Path>>(file_path: P) -> anyhow::Result<BoxUnboxRcA
 
     // prepend the package name since clap requires a prog name to parse args properly.
     // TODO: failure prints usage string, stop that since these aren't actually command line args
-    let parsed_args =
-        BoxUnboxRcArgs::try_parse_from(iter::once(env!("CARGO_PKG_NAME")).chain(combined_args))
-            .with_context(|| format!("Failed to parse args from rc file: {file_path:?}"))?;
+    let parsed_args = BoxUnboxRcArgs::try_parse_from(
+        iter::once(env!("CARGO_PKG_NAME").to_string()).chain(combined_args),
+    )
+    .with_context(|| format!("Failed to parse args from rc file: {file_path:?}"))?;
 
     std::env::set_current_dir(old_cwd)?;
 
