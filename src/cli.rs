@@ -73,3 +73,18 @@ pub struct BoxUnboxRcArgs {
     #[arg(short, long = "ignore")]
     pub ignore_pats: Vec<Regex>,
 }
+
+impl BoxUnboxArgs {
+    /// Merge these arguments with [`BoxUnboxRcArgs`] parsed from a `.unboxrc` file. This mutates
+    /// the current arguments by overriding them with the passed arguments.
+    ///
+    /// # Arguments
+    ///
+    /// - `rc_args` - Arguments parsed from RC file.
+    pub fn merge_with_rc(&mut self, rc_args: BoxUnboxRcArgs) {
+        self.target = rc_args.target.unwrap_or(self.target.clone());
+        self.include_dirs = rc_args.include_dirs.unwrap_or(self.include_dirs);
+
+        self.ignore_pats.extend(rc_args.ignore_pats);
+    }
+}

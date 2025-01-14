@@ -24,31 +24,30 @@ fn box_package_entry(pkg_entry: &DirEntry, target: &Path) -> anyhow::Result<()> 
 }
 
 fn main() -> anyhow::Result<()> {
-    let cli_args = BoxUnboxArgs::parse();
+    let mut cli_args = BoxUnboxArgs::parse();
 
     #[cfg(debug_assertions)]
     println!("cli_args={cli_args:#?}");
 
-    let BoxUnboxArgs {
-        dry_run,
-        package,
-        target,
-        ..
-    } = &cli_args;
-
-    let rc_path = package.join(".unboxrc");
+    let rc_path = cli_args.package.join(".unboxrc");
     if rc_path.exists() {
         let rc_args = parse_rc_file(rc_path)?;
 
         #[cfg(debug_assertions)]
         println!("parsed rc file with args: {rc_args:#?}");
 
-        // TODO: combine RC file and command line arguments
+        cli_args.merge_with_rc(rc_args);
     }
+
+    let BoxUnboxArgs {
+        dry_run,
+        ref target,
+        ..
+    } = cli_args;
 
     for res in get_package_entries(&cli_args)? {
         match res {
-            Ok(pkg_entry) if *dry_run => {
+            Ok(pkg_entry) if dry_run => {
                 println!(
                     "boxing {target:?} {:?}",
                     pkg_entry.fs_entry.path().display()
