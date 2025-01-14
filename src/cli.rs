@@ -55,3 +55,14 @@ pub struct BoxUnboxArgs {
     #[arg(short = None, long, default_value_t = false)]
     pub dry_run: bool,
 }
+
+#[derive(Debug, Parser, Clone)]
+#[command(about = None, long_about = None)]
+pub struct BoxUnboxRcArgs {
+    /// Target directory where the symlinks are stored. Must be a directory.
+    #[arg(short, long, value_parser = parse_and_expand_pathbuf)]
+    pub target: Option<PathBuf>,
+    /// Include directories.
+    #[arg(short = 'd', long)]
+    pub include_dirs: Option<bool>,
+}
