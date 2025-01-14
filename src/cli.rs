@@ -3,6 +3,7 @@ use std::{path::PathBuf, str::FromStr};
 use anyhow::Context;
 use clap::{Parser, ValueHint};
 use directories_next::UserDirs;
+use regex::Regex;
 
 /// Parses `&str` into a `PathBuf`. If the path begins with a `~`, it is expanded into the users
 /// home directory.
@@ -54,6 +55,9 @@ pub struct BoxUnboxArgs {
     /// Dry-run. Do not create/remove any symlinks.
     #[arg(short = None, long, default_value_t = false)]
     pub dry_run: bool,
+    /// Ignore file names by passing a regex to this flag. It can be passed multiple times.
+    #[arg(short, long = "ignore")]
+    pub ignore_pats: Vec<Regex>,
 }
 
 #[derive(Debug, Parser, Clone)]
@@ -65,4 +69,7 @@ pub struct BoxUnboxRcArgs {
     /// Include directories.
     #[arg(short = 'd', long)]
     pub include_dirs: Option<bool>,
+    /// Ignore file names by passing a regex to this flag. It can be passed multiple times.
+    #[arg(short, long = "ignore")]
+    pub ignore_pats: Vec<Regex>,
 }
