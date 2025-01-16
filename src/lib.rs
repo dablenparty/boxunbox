@@ -1,13 +1,15 @@
 use std::{
-    fs::{DirEntry, File, OpenOptions},
-    io::{BufRead, BufReader, Read},
+    fs::{DirEntry, File},
+    io::{BufRead, BufReader},
     iter,
     path::Path,
+    sync::LazyLock,
 };
 
 use anyhow::Context;
 use clap::Parser;
 use cli::{BoxUnboxArgs, BoxUnboxRcArgs};
+use regex::Regex;
 
 pub mod cli;
 
@@ -35,9 +37,13 @@ impl From<DirEntry> for PackageEntry {
 pub fn get_package_entries(
     args: &BoxUnboxArgs,
 ) -> anyhow::Result<Vec<anyhow::Result<PackageEntry>>> {
+    static RC_REGEX: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new("^\\.unboxrc$").expect(".unboxrc regex failed to compile"));
+
     let BoxUnboxArgs {
         package,
         include_dirs,
+        ignore_pats,
         ..
     } = args;
 
@@ -48,8 +54,15 @@ pub fn get_package_entries(
         .with_context(|| format!("Failed to read directory {package:?}"))?
         .filter_map(|res| {
             if let Ok(ref ent) = res {
-                // TODO: ignore files based on regex (just like stow)
-                if ent.file_name() == ".unboxrc"
+                // need utf8 string for regex
+                let file_name = ent.file_name();
+                // shadow previous name to get around temp value error without keeping it
+                let file_name = file_name.to_string_lossy();
+
+                if ignore_pats
+                    .iter()
+                    .chain(iter::once(&RC_REGEX.clone()))
+                    .any(|re| re.is_match(&file_name))
                     || (!include_dirs && ent.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
                 {
                     return None;
