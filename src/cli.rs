@@ -61,6 +61,10 @@ pub struct BoxUnboxRcArgs {
     pub ignore_pats: Vec<Regex>,
 }
 
+// TODO: implement args in the following way:
+// if RON file does not exist and no target is given via command line, throw an error
+// command line arguments generate a RON file if it does not exist
+// command line arguments override RON file and can overwrite it with a flag
 impl BoxUnboxArgs {
     /// Merge these arguments with [`BoxUnboxRcArgs`] parsed from a `.unboxrc` file. This mutates
     /// the current arguments by overriding them with the passed arguments.
