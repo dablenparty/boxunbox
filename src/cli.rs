@@ -33,6 +33,7 @@ pub fn parse_and_expand_pathbuf(s: &str) -> Result<PathBuf, String> {
 pub struct BoxUnboxArgs {
     /// Package to `box` or `unbox`. Can be a single file or a directory.
     #[arg(value_parser = parse_and_expand_pathbuf, value_hint = ValueHint::AnyPath)]
+    #[serde(skip)]
     pub package: PathBuf,
     /// Target directory where the symlinks are stored. Must be a directory.
     #[arg(short, long, default_value = "~", value_parser = parse_and_expand_pathbuf, value_hint = ValueHint::DirPath)]
