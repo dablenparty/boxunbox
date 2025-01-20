@@ -38,7 +38,7 @@ fn unbox_package_entry(pkg_entry: &DirEntry, target: &Path) -> anyhow::Result<()
 }
 
 fn main() -> anyhow::Result<()> {
-    let mut cli_args = BoxUnboxArgs::parse();
+    let cli_args = BoxUnboxArgs::parse();
 
     #[cfg(debug_assertions)]
     println!("{cli_args:#?}");
@@ -50,7 +50,7 @@ fn main() -> anyhow::Result<()> {
         #[cfg(debug_assertions)]
         println!("parsed rc file with args: {rc_args:#?}");
 
-        cli_args.merge_with_rc(rc_args);
+        // TODO: merge rc with main args
     }
 
     let BoxUnboxArgs {

@@ -7,8 +7,7 @@ use std::{
 };
 
 use anyhow::Context;
-use clap::Parser;
-use cli::{BoxUnboxArgs, BoxUnboxRcArgs};
+use cli::BoxUnboxArgs;
 use regex::Regex;
 
 pub mod cli;
@@ -180,28 +179,6 @@ fn tokenize_rc_file<P: AsRef<Path>>(file_path: P) -> anyhow::Result<Vec<String>>
 /// - `file_path` is not valid Unicode.
 /// - The current working directory cannot be determined or changed.
 ///     - The CWD needs to be changed so that relative paths get canonicalized properly
-pub fn parse_rc_file<P: AsRef<Path>>(file_path: P) -> anyhow::Result<BoxUnboxRcArgs> {
-    let file_path = file_path.as_ref();
-
-    let combined_args = tokenize_rc_file(file_path)?;
-
-    /*
-    I use a custom PathBuf parser that expands `~` and canonicalizes the path; however, that
-    assumes that the path is being canonicalized from the dierctory the program was called
-    from (i.e. the `cwd`). RC files are in the _package_ dirs, so the `cwd` is set to the
-    package dir while parsing the RC file, then reset when done.
-    */
-    let old_cwd = std::env::current_dir()?;
-    std::env::set_current_dir(file_path.parent().unwrap())?;
-
-    // prepend the package name since clap requires a prog name to parse args properly.
-    // TODO: failure prints usage string, stop that since these aren't actually command line args
-    let parsed_args = BoxUnboxRcArgs::try_parse_from(
-        iter::once(env!("CARGO_PKG_NAME").to_string()).chain(combined_args),
-    )
-    .with_context(|| format!("Failed to parse args from rc file: {file_path:?}"))?;
-
-    std::env::set_current_dir(old_cwd)?;
-
-    Ok(parsed_args)
+pub fn parse_rc_file<P: AsRef<Path>>(file_path: P) -> anyhow::Result<BoxUnboxArgs> {
+    todo!("implement parse_rc_file");
 }
