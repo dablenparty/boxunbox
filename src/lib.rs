@@ -11,6 +11,7 @@ use cli::BoxUnboxArgs;
 use regex::Regex;
 
 pub mod cli;
+pub mod rc;
 
 #[derive(Debug)]
 pub struct PackageEntry {

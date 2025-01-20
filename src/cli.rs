@@ -34,11 +34,10 @@ pub fn parse_and_expand_pathbuf(s: &str) -> Result<PathBuf, String> {
     expand_and_clean(s).map_err(|err| err.to_string())
 }
 
-#[derive(Debug, Parser, Clone, Serialize, Deserialize)]
+#[derive(Debug, Parser, Clone)]
 pub struct BoxUnboxArgs {
     /// Package to `box` or `unbox`. Can be a single file or a directory.
     #[arg(value_parser = parse_and_expand_pathbuf, value_hint = ValueHint::AnyPath)]
-    #[serde(skip)]
     pub package: PathBuf,
     /// Target directory where the symlinks are stored. Must be a directory.
     #[arg(short, long, default_value = "~", value_parser = parse_and_expand_pathbuf, value_hint = ValueHint::DirPath)]
@@ -51,7 +50,6 @@ pub struct BoxUnboxArgs {
     pub dry_run: bool,
     /// Ignore file names by passing a regex to this flag. It can be passed multiple times.
     #[arg(short, long = "ignore")]
-    #[serde(with = "serde_regex")]
     pub ignore_pats: Vec<Regex>,
 }
 
@@ -59,12 +57,3 @@ pub struct BoxUnboxArgs {
 // if RON file does not exist and no target is given via command line, throw an error
 // command line arguments generate a RON file if it does not exist
 // command line arguments override RON file and can overwrite it with a flag
-impl BoxUnboxArgs {
-    pub fn parse_rc_file<P: AsRef<Path>>(rc: P) -> anyhow::Result<Self> {
-        let rc_path = rc.as_ref();
-        anyhow::ensure!(rc_path.exists(), "{rc_path:?} doesn't exist!");
-
-        let rc_str = fs::read_to_string(rc_path)?;
-        ron::from_str(&rc_str).with_context(|| format!("failed to parse rc file: {rc_path:?}"))
-    }
-}
