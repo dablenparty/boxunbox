@@ -38,7 +38,7 @@ pub fn get_package_entries(
     args: &BoxUnboxArgs,
 ) -> anyhow::Result<Vec<anyhow::Result<PackageEntry>>> {
     static RC_REGEX: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new("^\\.unboxrc$").expect(".unboxrc regex failed to compile"));
+        LazyLock::new(|| Regex::new("\\.unboxrc$").expect(".unboxrc regex failed to compile"));
 
     let BoxUnboxArgs {
         package,
