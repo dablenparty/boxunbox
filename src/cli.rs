@@ -1,5 +1,10 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
+use anyhow::Context;
 use clap::{Parser, ValueHint};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -54,3 +59,12 @@ pub struct BoxUnboxArgs {
 // if RON file does not exist and no target is given via command line, throw an error
 // command line arguments generate a RON file if it does not exist
 // command line arguments override RON file and can overwrite it with a flag
+impl BoxUnboxArgs {
+    pub fn parse_rc_file<P: AsRef<Path>>(rc: P) -> anyhow::Result<Self> {
+        let rc_path = rc.as_ref();
+        anyhow::ensure!(rc_path.exists(), "{rc_path:?} doesn't exist!");
+
+        let rc_str = fs::read_to_string(rc_path)?;
+        ron::from_str(&rc_str).with_context(|| format!("failed to parse rc file: {rc_path:?}"))
+    }
+}
