@@ -1,6 +1,6 @@
 use std::{fs::DirEntry, path::Path};
 
-use boxunbox::{cli::BoxUnboxArgs, get_package_entries, parse_rc_file, PackageEntry};
+use boxunbox::{cli::BoxUnboxArgs, get_package_entries, rc::BoxUnboxRcArgs, PackageEntry};
 use clap::Parser;
 
 /// Unboxes a package entry in `target`. The `pkg_entry`'s file name is used for the name of the symlink.
@@ -45,7 +45,7 @@ fn main() -> anyhow::Result<()> {
 
     let rc_path = cli_args.package.join(".unboxrc");
     if rc_path.exists() {
-        let rc_args = parse_rc_file(rc_path)?;
+        let rc_args = BoxUnboxRcArgs::parse_rc_file(rc_path)?;
 
         #[cfg(debug_assertions)]
         println!("parsed rc file with args: {rc_args:#?}");
