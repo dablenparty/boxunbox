@@ -16,6 +16,21 @@ pub struct BoxUnboxRcArgs {
 }
 
 impl BoxUnboxRcArgs {
+    /// Parse a `.unboxrc` file and return the parsed arguments.
+    ///
+    /// The file is expected to be in [RON format](https://github.com/ron-rs/ron).
+    ///
+    /// # Arguments
+    ///
+    /// - `rc_path` - Path to the RC file.
+    ///
+    /// # Errors
+    ///
+    /// An error is returned if:
+    ///
+    /// - `rc_path` doesn't exist
+    /// - `rc_path` cannot be read (see [`std::fs::read_to_string`])
+    /// - `rc_path` cannot be parsed as a valid RON file.
     pub fn parse_rc_file<P: AsRef<Path>>(rc_path: P) -> anyhow::Result<Self> {
         let rc_path = rc_path.as_ref();
         anyhow::ensure!(rc_path.exists(), "{rc_path:?} doesn't exist!");
