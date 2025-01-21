@@ -1,3 +1,5 @@
---target ../dest
---ignore ^.*ignore\.txt$
---ignore "try me '\\d'"
+BoxUnboxRcArgs(
+    target: "../dest",
+    include_dirs: false,
+    ignore_pats: ["^.*ignore\\.txt$"],
+)
