@@ -1,6 +1,7 @@
 use std::{fs::DirEntry, path::Path};
 
-use boxunbox::{cli::BoxUnboxCli, get_package_entries, rc::BoxUnboxRcArgs, PackageEntry};
+use anyhow::Context;
+use boxunbox::{cli::BoxUnboxCli, package::PackageOptions, rc::BoxUnboxRcArgs, PackageEntry};
 use clap::Parser;
 
 /// Unboxes a package entry in `target`. The `pkg_entry`'s file name is used for the name of the symlink.
@@ -19,9 +20,12 @@ fn unbox_package_entry(pkg_entry: &DirEntry, target: &Path) -> anyhow::Result<()
     let path = pkg_entry.path();
     let link_path = target.join(pkg_entry.file_name());
 
+    anyhow::ensure!(link_path.exists(), "target {link_path:?} does not exist");
+
     #[cfg(unix)]
     {
-        std::os::unix::fs::symlink(path, link_path)?;
+        std::os::unix::fs::symlink(&path, &link_path)
+            .with_context(|| format!("failed unboxing {path:?} to {link_path:?}"))?;
     }
 
     #[cfg(windows)]
@@ -44,24 +48,39 @@ fn main() -> anyhow::Result<()> {
     println!("{cli_args:#?}");
 
     let rc_path = cli_args.package.join(".unboxrc");
-    if rc_path.exists() {
+    let do_dry_run = cli_args.dry_run;
+
+    // if the RC file doesn't exist, make it from the command line options (--target is required)
+    // if it does, try to parse it and merge it with the CLI args
+    let package_opts = if !rc_path.exists() {
+        anyhow::ensure!(cli_args.target.is_some(), "Failed to unbox {rc_path:?}: no `.unboxrc` file found. Note: the --target flag must be passed the first time a package is unboxed.");
+
+        let opts = PackageOptions::try_from(cli_args).context("failed to create PackageOptions")?;
+        let rc_args = BoxUnboxRcArgs::from(opts.clone());
+        rc_args
+            .save_rc_file(&rc_path)
+            .with_context(|| format!("failed to save rc file {rc_path:?}"))?;
+
+        println!("saved rc file: {}", rc_path.display());
+
+        opts
+    } else {
         let rc_args = BoxUnboxRcArgs::parse_rc_file(rc_path)?;
 
         #[cfg(debug_assertions)]
         println!("parsed rc file with args: {rc_args:#?}");
 
-        // TODO: merge rc with main args
-    }
+        PackageOptions::from_parts(cli_args, rc_args)
+    };
 
-    let BoxUnboxCli {
-        dry_run,
-        ref target,
-        ..
-    } = cli_args;
+    #[cfg(debug_assertions)]
+    println!("parsed package options: {package_opts:#?}");
 
-    for res in get_package_entries(&cli_args)? {
+    let target = package_opts.target.as_path();
+
+    for res in package_opts.get_package_entries()? {
         match res {
-            Ok(pkg_entry) if dry_run => {
+            Ok(pkg_entry) if do_dry_run => {
                 println!(
                     "unboxing {:?} -> {target:?}",
                     pkg_entry.fs_entry.path().display()

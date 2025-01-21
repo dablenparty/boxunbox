@@ -1,13 +1,9 @@
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::path::PathBuf;
 
-use anyhow::Context;
 use clap::{Parser, ValueHint};
 use regex::Regex;
-use serde::{Deserialize, Serialize};
+
+use crate::expand_and_clean_pathbuf;
 
 /// Parses `&str` into a `PathBuf`. If the path begins with a `~`, it is expanded into the users
 /// home directory. Also parses environment variables.
@@ -25,13 +21,7 @@ use serde::{Deserialize, Serialize};
 /// This function will panic if the users home directory cannot be found OR if `PathBuf::from_str`
 /// fails, although neither should ever happen.
 pub fn parse_and_expand_pathbuf(s: &str) -> Result<PathBuf, String> {
-    fn expand_and_clean(s: &str) -> anyhow::Result<PathBuf> {
-        let expanded = shellexpand::full(s)?;
-        let connected = std::env::current_dir()?.join(PathBuf::from_str(&expanded).unwrap());
-        Ok(path_clean::clean(connected))
-    }
-
-    expand_and_clean(s).map_err(|err| err.to_string())
+    expand_and_clean_pathbuf(s).map_err(|err| err.to_string())
 }
 
 #[derive(Debug, Parser, Clone)]
@@ -40,11 +30,11 @@ pub struct BoxUnboxCli {
     #[arg(value_parser = parse_and_expand_pathbuf, value_hint = ValueHint::AnyPath)]
     pub package: PathBuf,
     /// Target directory where the symlinks are stored. Must be a directory.
-    #[arg(short, long, default_value = "~", value_parser = parse_and_expand_pathbuf, value_hint = ValueHint::DirPath)]
-    pub target: PathBuf,
+    #[arg(short, long,  value_parser = parse_and_expand_pathbuf, value_hint = ValueHint::DirPath)]
+    pub target: Option<PathBuf>,
     /// Include directories.
-    #[arg(short = 'd', long, default_value_t = false)]
-    pub include_dirs: bool,
+    #[arg(short = 'd', long)]
+    pub include_dirs: Option<bool>,
     /// Dry-run. Do not create/remove any symlinks.
     #[arg(short = None, long, default_value_t = false)]
     pub dry_run: bool,
