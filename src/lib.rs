@@ -1,7 +1,7 @@
 use std::{fs::DirEntry, iter, sync::LazyLock};
 
 use anyhow::Context;
-use cli::BoxUnboxArgs;
+use cli::BoxUnboxCli;
 use regex::Regex;
 
 pub mod cli;
@@ -29,12 +29,12 @@ impl From<DirEntry> for PackageEntry {
 /// An error is returned if one occurs when reading the package directory. Errors for individual
 /// [`DirEntry`]'s do not end this function and are instead collected into the returned `Vec`.
 pub fn get_package_entries(
-    args: &BoxUnboxArgs,
+    args: &BoxUnboxCli,
 ) -> anyhow::Result<Vec<anyhow::Result<PackageEntry>>> {
     static RC_REGEX: LazyLock<Regex> =
         LazyLock::new(|| Regex::new("\\.unboxrc$").expect(".unboxrc regex failed to compile"));
 
-    let BoxUnboxArgs {
+    let BoxUnboxCli {
         package,
         include_dirs,
         ignore_pats,

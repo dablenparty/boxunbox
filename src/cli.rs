@@ -35,7 +35,7 @@ pub fn parse_and_expand_pathbuf(s: &str) -> Result<PathBuf, String> {
 }
 
 #[derive(Debug, Parser, Clone)]
-pub struct BoxUnboxArgs {
+pub struct BoxUnboxCli {
     /// Package to `box` or `unbox`. Can be a single file or a directory.
     #[arg(value_parser = parse_and_expand_pathbuf, value_hint = ValueHint::AnyPath)]
     pub package: PathBuf,
