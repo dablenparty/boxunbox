@@ -5,6 +5,7 @@ use cli::BoxUnboxCli;
 use regex::Regex;
 
 pub mod cli;
+pub mod package;
 pub mod rc;
 
 #[derive(Debug)]
