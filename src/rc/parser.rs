@@ -27,8 +27,13 @@ where
     expand_into_pathbuf(s).map_err(D::Error::custom)
 }
 
+/// Utility function returning the default value for [`BoxUnboxRc::target`], which is the users
+/// home directory.
 fn __target_default() -> PathBuf {
-    expand_into_pathbuf("~/").expect("failed to expand a single `~`")
+    directories_next::UserDirs::new()
+        .expect("failed to locate user home directory")
+        .home_dir()
+        .to_path_buf()
 }
 
 #[derive(Debug, Deserialize, Serialize)]
