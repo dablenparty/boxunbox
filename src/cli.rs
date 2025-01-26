@@ -1,18 +1,18 @@
 use std::path::PathBuf;
 
-use anyhow::Context;
 use clap::Parser;
 
-/// Parses a `&str` slice as a PathBuf, expand `~` and environment variables, and clean the path.
-fn cli_parse_pathbuf(s: &str) -> Result<PathBuf, String> {
-    fn expand_pathbuf<S: AsRef<str>>(s: S) -> anyhow::Result<PathBuf> {
-        let s = s.as_ref();
-        let expanded = shellexpand::full(s).with_context(|| format!("failed to expand {s:?}"))?;
-        let cleaned = path_clean::clean(expanded.as_ref());
-        Ok(cleaned)
-    }
+use crate::expand_into_pathbuf;
 
-    expand_pathbuf(s).map_err(|err| err.to_string())
+/**
+Parses a `&str` slice as a [`PathBuf`], expand `~` and environment variables and clean the path.
+
+# Arguments
+
+- `s` - `&str` slice.
+*/
+fn cli_parse_pathbuf(s: &str) -> Result<PathBuf, String> {
+    expand_into_pathbuf(s).map_err(|err| err.to_string())
 }
 
 #[derive(Debug, Parser)]
