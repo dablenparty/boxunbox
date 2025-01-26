@@ -92,7 +92,7 @@ impl BoxUnboxRc {
             return Err(RcParseError::RcFileNotFound(rc_file.to_owned()));
         }
 
-        let rc_str = fs::read_to_string(package)
+        let rc_str = fs::read_to_string(&rc_file)
             .with_context(|| format!("failed to read file: {rc_file:?}"))?;
 
         let rc = ron::from_str(&rc_str)?;
