@@ -18,8 +18,8 @@ pub enum ParseError {
 pub enum WriteError {
     /// Failed to serialize struct
     #[error("failed to serialize RC struct: {0}")]
-    RcFailedToSerialize(#[from] ron::Error),
+    FailedToSerialize(#[from] ron::Error),
     /// Failed to write to file
     #[error("failed to write rc file: {0}")]
-    RcFailedToWrite(#[from] anyhow::Error),
+    FailedToWriteRc(#[from] anyhow::Error),
 }
