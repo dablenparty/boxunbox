@@ -3,9 +3,11 @@ use std::path::PathBuf;
 use anyhow::Context;
 use clap::Parser;
 use cli::BoxUnboxCli;
+use constants::BASE_DIRS;
 use package::{errors::ParseError, PackageConfig};
 
 mod cli;
+mod constants;
 mod package;
 
 /**
@@ -58,11 +60,7 @@ fn main() -> anyhow::Result<()> {
                 }
 
                 default_config.save_to_package(&package)?;
-                // TODO: extract convenience method for UserDirs
-                default_config.target = directories_next::UserDirs::new()
-                    .unwrap()
-                    .home_dir()
-                    .to_path_buf();
+                default_config.target = BASE_DIRS.home_dir().to_path_buf();
 
                 Ok(default_config)
             } else {

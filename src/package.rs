@@ -7,7 +7,7 @@ use anyhow::Context;
 use ron::ser::PrettyConfig;
 use serde::{de::Error, Deserialize, Deserializer, Serialize};
 
-use crate::{cli::BoxUnboxCli, expand_into_pathbuf};
+use crate::{cli::BoxUnboxCli, constants::BASE_DIRS, expand_into_pathbuf};
 
 pub mod errors;
 
@@ -24,13 +24,10 @@ where
     expand_into_pathbuf(s).map_err(D::Error::custom)
 }
 
-/// Utility function returning the default value for [`BoxUnboxRc::target`], which is the users
+/// Utility function returning the default value for [`PackageConfig::target`], which is the users
 /// home directory.
 fn __target_default() -> PathBuf {
-    directories_next::UserDirs::new()
-        .expect("failed to locate user home directory")
-        .home_dir()
-        .to_path_buf()
+    BASE_DIRS.home_dir().to_path_buf()
 }
 
 #[derive(Debug, Deserialize, Serialize)]
