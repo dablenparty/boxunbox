@@ -47,7 +47,7 @@ fn main() -> anyhow::Result<()> {
         }
         Err(err) => {
             if let ParseError::FileNotFound(rc_path) = err {
-                let default_config = PackageConfig::new(&package).merge_with_cli(cli);
+                let mut default_config = PackageConfig::new(&package).merge_with_cli(cli);
                 #[cfg(debug_assertions)]
                 {
                     eprintln!(
@@ -58,6 +58,11 @@ fn main() -> anyhow::Result<()> {
                 }
 
                 default_config.save_to_package(&package)?;
+                // TODO: extract convenience method for UserDirs
+                default_config.target = directories_next::UserDirs::new()
+                    .unwrap()
+                    .home_dir()
+                    .to_path_buf();
 
                 Ok(default_config)
             } else {
