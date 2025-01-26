@@ -1,4 +1,4 @@
-use std::{io, path::PathBuf};
+use std::path::PathBuf;
 
 use anyhow::Context;
 use clap::Parser;
