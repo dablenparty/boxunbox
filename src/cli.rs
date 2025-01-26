@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
-use crate::expand_into_pathbuf;
+use crate::{expand_into_pathbuf, package::PackageConfig};
 
 /**
 Parses a `&str` slice as a [`PathBuf`], expand `~` and environment variables and clean the path.
@@ -21,4 +21,19 @@ pub struct BoxUnboxCli {
     pub package: PathBuf,
     #[arg(short, long, value_parser = cli_parse_pathbuf)]
     pub target: Option<PathBuf>,
+}
+
+impl From<PackageConfig> for BoxUnboxCli {
+    fn from(value: PackageConfig) -> Self {
+        Self::from(&value)
+    }
+}
+
+impl From<&PackageConfig> for BoxUnboxCli {
+    fn from(value: &PackageConfig) -> Self {
+        Self {
+            package: value.package.clone(),
+            target: Some(value.target.clone()),
+        }
+    }
 }

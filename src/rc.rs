@@ -10,7 +10,7 @@ use serde::{
     Deserialize, Serialize,
 };
 
-use crate::expand_into_pathbuf;
+use crate::{expand_into_pathbuf, package::PackageConfig};
 
 /// Utility function to deserialize a [`PathBuf`] while expanding environment variables and `~`.
 ///
@@ -53,13 +53,27 @@ pub enum RcSaveError {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BoxUnboxRc {
     #[serde(default = "__target_default", deserialize_with = "__de_pathbuf")]
-    target: PathBuf,
+    pub target: PathBuf,
 }
 
 impl Default for BoxUnboxRc {
     fn default() -> Self {
         Self {
             target: __target_default(),
+        }
+    }
+}
+
+impl From<PackageConfig> for BoxUnboxRc {
+    fn from(value: PackageConfig) -> Self {
+        Self::from(&value)
+    }
+}
+
+impl From<&PackageConfig> for BoxUnboxRc {
+    fn from(value: &PackageConfig) -> Self {
+        Self {
+            target: value.target.clone(),
         }
     }
 }
