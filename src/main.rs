@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{io, path::PathBuf};
 
 use anyhow::Context;
 use clap::Parser;
@@ -33,8 +33,11 @@ fn main() -> anyhow::Result<()> {
     #[cfg(debug_assertions)]
     println!("cli={cli:#?}");
 
-    let package = cli.package.clone();
-    anyhow::ensure!(package.exists(), "package does not exist: {package:?}");
+    let package = cli
+        .package
+        .clone()
+        .canonicalize()
+        .with_context(|| format!("failed to canonicalize {:?}", cli.package))?;
 
     let rc = match BoxUnboxRc::try_parse_from_package(&package) {
         Ok(rc) => {
@@ -57,6 +60,10 @@ fn main() -> anyhow::Result<()> {
     };
 
     println!("rc={rc:#?}");
+
+    // TODO: merge RC file and CLI args into one settings struct
+    // TODO: unbox package
+    // TODO: better documentation, organization, and error handling
 
     Ok(())
 }
