@@ -36,7 +36,26 @@ fn main() -> anyhow::Result<()> {
     let package = cli.package.clone();
     anyhow::ensure!(package.exists(), "package does not exist: {package:?}");
 
-    let rc = BoxUnboxRc::try_parse_from_package(package)?;
+    let rc = match BoxUnboxRc::try_parse_from_package(&package) {
+        Ok(rc) => {
+            println!("rc={rc:#?}");
+            rc
+        }
+        Err(err) => {
+            if let rc::RcParseError::RcFileNotFound(rc_path) = err {
+                eprintln!(
+                    "didn't find RC file @ {}, creating default...",
+                    rc_path.display()
+                );
+                let default_rc = BoxUnboxRc::default();
+                default_rc.save_package_rc(&package)?;
+                Ok(default_rc)
+            } else {
+                Err(err)
+            }?
+        }
+    };
+
     println!("rc={rc:#?}");
 
     Ok(())
