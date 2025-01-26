@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use anyhow::Context;
 use clap::Parser;
 use cli::BoxUnboxCli;
+use rc::BoxUnboxRc;
 
 mod cli;
 mod rc;
@@ -26,9 +27,17 @@ fn expand_into_pathbuf<S: AsRef<str>>(s: S) -> anyhow::Result<PathBuf> {
     Ok(cleaned)
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let cli = BoxUnboxCli::parse();
 
     #[cfg(debug_assertions)]
     println!("cli={cli:#?}");
+
+    let package = cli.package.clone();
+    anyhow::ensure!(package.exists(), "package does not exist: {package:?}");
+
+    let rc = BoxUnboxRc::try_parse_from_package(package)?;
+    println!("rc={rc:#?}");
+
+    Ok(())
 }
