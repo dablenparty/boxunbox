@@ -12,7 +12,7 @@ use serde::{
 
 use crate::{expand_into_pathbuf, package::PackageConfig};
 
-use super::errors::{RcParseError, RcSaveError};
+use super::errors::{ParseError, WriteError};
 
 /// Utility function to deserialize a [`PathBuf`] while expanding environment variables and `~`.
 ///
@@ -79,12 +79,12 @@ impl BoxUnboxRc {
     /// - The RC file doesn't exist.
     /// - Failure to read RC file.
     /// - Failure to parse RC file with [`ron`].
-    pub fn try_parse_from_package<P: AsRef<Path>>(p: P) -> Result<Self, RcParseError> {
+    pub fn try_parse_from_package<P: AsRef<Path>>(p: P) -> Result<Self, ParseError> {
         let package = p.as_ref();
         let rc_file = package.join(BoxUnboxRc::__rc_file_name());
 
         if !rc_file.exists() {
-            return Err(RcParseError::RcFileNotFound(rc_file.to_owned()));
+            return Err(ParseError::RcFileNotFound(rc_file.to_owned()));
         }
 
         let rc_str = fs::read_to_string(&rc_file)
@@ -107,7 +107,7 @@ impl BoxUnboxRc {
     ///
     /// - These args fail to serialize.
     /// - The RC file cannot be written to.
-    pub fn save_package_rc<P: AsRef<Path>>(&self, package: P) -> Result<(), RcSaveError> {
+    pub fn save_package_rc<P: AsRef<Path>>(&self, package: P) -> Result<(), WriteError> {
         let package = package.as_ref();
         let rc_path = package.join(BoxUnboxRc::__rc_file_name());
 

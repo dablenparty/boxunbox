@@ -4,7 +4,7 @@ use anyhow::Context;
 use clap::Parser;
 use cli::BoxUnboxCli;
 use package::PackageConfig;
-use rc::{errors::RcParseError, BoxUnboxRc};
+use rc::{errors::ParseError, BoxUnboxRc};
 
 mod cli;
 mod package;
@@ -48,7 +48,7 @@ fn main() -> anyhow::Result<()> {
             rc
         }
         Err(err) => {
-            if let RcParseError::RcFileNotFound(rc_path) = err {
+            if let ParseError::RcFileNotFound(rc_path) = err {
                 eprintln!(
                     "didn't find RC file @ {}, creating default...",
                     rc_path.display()

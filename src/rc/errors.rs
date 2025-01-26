@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 #[derive(Debug, thiserror::Error)]
-pub enum RcParseError {
+pub enum ParseError {
     /// The RC file doesn't exist
     #[error("no RC file found at `{0}`")]
     RcFileNotFound(PathBuf),
@@ -13,10 +13,13 @@ pub enum RcParseError {
     BadRcFormat(#[from] ron::error::SpannedError),
 }
 
+/// An error that can occur when writing/saving the RC file.
 #[derive(Debug, thiserror::Error)]
-pub enum RcSaveError {
+pub enum WriteError {
+    /// Failed to serialize struct
     #[error("failed to serialize RC struct: {0}")]
     RcFailedToSerialize(#[from] ron::Error),
+    /// Failed to write to file
     #[error("failed to write rc file: {0}")]
     RcFailedToWrite(#[from] anyhow::Error),
 }
