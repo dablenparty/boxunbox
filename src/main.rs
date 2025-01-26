@@ -42,17 +42,24 @@ fn main() -> anyhow::Result<()> {
     let pkg_config = match PackageConfig::try_from_package(&package) {
         Ok(rc) => {
             #[cfg(debug_assertions)]
-            println!("rc={rc:#?}");
-            rc
+            println!("parsed_rc={rc:#?}");
+            rc.merge_with_cli(cli)
         }
         Err(err) => {
             if let ParseError::FileNotFound(rc_path) = err {
-                eprintln!(
-                    "didn't find RC file @ {}, creating default...",
-                    rc_path.display()
-                );
+                let default_config = PackageConfig::new(&package).merge_with_cli(cli);
+                #[cfg(debug_assertions)]
+                {
+                    eprintln!(
+                        "didn't find RC file @ {}, creating default...",
+                        rc_path.display()
+                    );
+                    eprintln!("default_config={default_config:#?}");
+                }
 
-                todo!("create rc file since it doesn't exist");
+                default_config.save_to_package(&package)?;
+
+                Ok(default_config)
             } else {
                 Err(err)
             }?
@@ -62,9 +69,7 @@ fn main() -> anyhow::Result<()> {
     #[cfg(debug_assertions)]
     println!("pkg_config={pkg_config:#?}");
 
-    // TODO: merge RC file and CLI args into one settings struct
     // TODO: unbox package
-    // TODO: better documentation, organization, and error handling
     // TODO: regex ignore patterns
 
     Ok(())
