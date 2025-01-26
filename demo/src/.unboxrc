@@ -1,3 +1,0 @@
---target ../dest
---ignore ^.*ignore\.txt$
---ignore "try me '\\d'"
