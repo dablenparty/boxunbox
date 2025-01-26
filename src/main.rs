@@ -3,12 +3,10 @@ use std::path::PathBuf;
 use anyhow::Context;
 use clap::Parser;
 use cli::BoxUnboxCli;
-use package::PackageConfig;
-use rc::{errors::ParseError, BoxUnboxRc};
+use package::{errors::ParseError, PackageConfig};
 
 mod cli;
 mod package;
-mod rc;
 
 /**
 Given a reference to a `&str` slice, expand `~` and environment variables, clean path
@@ -41,32 +39,25 @@ fn main() -> anyhow::Result<()> {
         .canonicalize()
         .with_context(|| format!("failed to canonicalize {:?}", cli.package))?;
 
-    let rc = match BoxUnboxRc::try_parse_from_package(&package) {
+    let pkg_config = match PackageConfig::try_from_package(&package) {
         Ok(rc) => {
             #[cfg(debug_assertions)]
             println!("rc={rc:#?}");
             rc
         }
         Err(err) => {
-            if let ParseError::RcFileNotFound(rc_path) = err {
+            if let ParseError::FileNotFound(rc_path) = err {
                 eprintln!(
                     "didn't find RC file @ {}, creating default...",
                     rc_path.display()
                 );
-                let default_rc = BoxUnboxRc::default();
-                // if it doesn't exist, perform the merge, then re-extract the RC args
-                // and write them to the file.
-                let writeable_rc = BoxUnboxRc::from(PackageConfig::from_parts(&cli, &default_rc));
-                writeable_rc.save_package_rc(&package)?;
 
-                Ok(default_rc)
+                todo!("create rc file since it doesn't exist");
             } else {
                 Err(err)
             }?
         }
     };
-
-    let pkg_config = PackageConfig::from_parts(&cli, &rc);
 
     #[cfg(debug_assertions)]
     println!("pkg_config={pkg_config:#?}");
