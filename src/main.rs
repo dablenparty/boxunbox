@@ -5,6 +5,7 @@ use clap::Parser;
 use cli::BoxUnboxCli;
 
 mod cli;
+mod rc;
 
 /**
 Given a reference to a `&str` slice, expand `~` and environment variables, clean path
