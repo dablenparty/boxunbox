@@ -1,5 +1,11 @@
+use clap::Parser;
+use cli::BoxUnboxCli;
+
 mod cli;
 
 fn main() {
-    todo!("implement unbox (box will be a flag)")
+    let cli = BoxUnboxCli::parse();
+
+    #[cfg(debug_assertions)]
+    println!("cli={cli:#?}");
 }
