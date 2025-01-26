@@ -4,7 +4,7 @@ use anyhow::Context;
 use clap::Parser;
 use cli::BoxUnboxCli;
 use package::PackageConfig;
-use rc::BoxUnboxRc;
+use rc::{errors::RcParseError, BoxUnboxRc};
 
 mod cli;
 mod package;
@@ -48,7 +48,7 @@ fn main() -> anyhow::Result<()> {
             rc
         }
         Err(err) => {
-            if let rc::RcParseError::RcFileNotFound(rc_path) = err {
+            if let RcParseError::RcFileNotFound(rc_path) = err {
                 eprintln!(
                     "didn't find RC file @ {}, creating default...",
                     rc_path.display()
@@ -58,6 +58,7 @@ fn main() -> anyhow::Result<()> {
                 // and write them to the file.
                 let writeable_rc = BoxUnboxRc::from(PackageConfig::from_parts(&cli, &default_rc));
                 writeable_rc.save_package_rc(&package)?;
+
                 Ok(default_rc)
             } else {
                 Err(err)
