@@ -56,7 +56,8 @@ impl PackageConfig {
     pub fn new<P: AsRef<Path>>(p: P) -> Self {
         Self {
             package: p.as_ref().to_path_buf(),
-            target: __target_default(),
+            // use the ~ instead of the absolute path for simple multi-system support
+            target: PathBuf::from("~/"),
         }
     }
 
