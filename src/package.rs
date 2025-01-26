@@ -46,6 +46,11 @@ impl PackageConfig {
         ".unboxrc.ron"
     }
 
+    /// Make a new [`PackageConfig`] with a given [`Path`] `p` and default options.
+    ///
+    /// # Arguments
+    ///
+    /// - `p` - Package to make config for
     pub fn new<P: AsRef<Path>>(p: P) -> Self {
         Self {
             package: p.as_ref().to_path_buf(),
