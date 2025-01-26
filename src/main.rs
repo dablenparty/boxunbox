@@ -3,9 +3,11 @@ use std::path::PathBuf;
 use anyhow::Context;
 use clap::Parser;
 use cli::BoxUnboxCli;
+use package::PackageConfig;
 use rc::BoxUnboxRc;
 
 mod cli;
+mod package;
 mod rc;
 
 /**
@@ -41,6 +43,7 @@ fn main() -> anyhow::Result<()> {
 
     let rc = match BoxUnboxRc::try_parse_from_package(&package) {
         Ok(rc) => {
+            #[cfg(debug_assertions)]
             println!("rc={rc:#?}");
             rc
         }
@@ -51,7 +54,10 @@ fn main() -> anyhow::Result<()> {
                     rc_path.display()
                 );
                 let default_rc = BoxUnboxRc::default();
-                default_rc.save_package_rc(&package)?;
+                // if it doesn't exist, perform the merge, then re-extract the RC args
+                // and write them to the file.
+                let writeable_rc = BoxUnboxRc::from(PackageConfig::from_parts(&cli, &default_rc));
+                writeable_rc.save_package_rc(&package)?;
                 Ok(default_rc)
             } else {
                 Err(err)
@@ -59,11 +65,15 @@ fn main() -> anyhow::Result<()> {
         }
     };
 
-    println!("rc={rc:#?}");
+    let pkg_config = PackageConfig::from_parts(&cli, &rc);
+
+    #[cfg(debug_assertions)]
+    println!("pkg_config={pkg_config:#?}");
 
     // TODO: merge RC file and CLI args into one settings struct
     // TODO: unbox package
     // TODO: better documentation, organization, and error handling
+    // TODO: regex ignore patterns
 
     Ok(())
 }
