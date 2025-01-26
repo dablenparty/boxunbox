@@ -4,9 +4,10 @@ use std::{
 };
 
 use anyhow::Context;
+use ron::ser::PrettyConfig;
 use serde::{de::Error, Deserialize, Deserializer, Serialize};
 
-use crate::expand_into_pathbuf;
+use crate::{cli::BoxUnboxCli, expand_into_pathbuf};
 
 pub mod errors;
 
@@ -34,6 +35,7 @@ fn __target_default() -> PathBuf {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PackageConfig {
+    #[serde(skip)]
     pub package: PathBuf,
     #[serde(default = "__target_default", deserialize_with = "__de_pathbuf")]
     pub target: PathBuf,
@@ -55,6 +57,18 @@ impl PackageConfig {
         Self {
             package: p.as_ref().to_path_buf(),
             target: __target_default(),
+        }
+    }
+
+    /// Merge with [`BoxUnboxCli`] args. Consumes both this struct and the `cli` args.
+    ///
+    /// # Arguments
+    ///
+    /// - `cli` - CLI args to merge with.
+    pub fn merge_with_cli(self, cli: BoxUnboxCli) -> Self {
+        Self {
+            package: cli.package,
+            target: cli.target.unwrap_or(self.target),
         }
     }
 
@@ -85,5 +99,29 @@ impl PackageConfig {
         let rc = ron::from_str(&rc_str)?;
 
         Ok(rc)
+    }
+
+    /// Save this [`PackageConfig`] to a `package` directory.
+    ///
+    /// # Arguments
+    ///
+    /// - `package` - Package to save this config to.
+    ///
+    /// # Errors
+    ///
+    /// An error is returned if:
+    ///
+    /// - This struct fails to serialize into RON.
+    /// - The file cannot be created/written to
+    pub fn save_to_package<P: AsRef<Path>>(&self, package: P) -> Result<(), errors::WriteError> {
+        let package = package.as_ref();
+        let rc_file = package.join(PackageConfig::__rc_file_name());
+
+        // TODO: do something if the config already exists, maybe an error?
+        // WARN: this overwrites the existing file, be careful!
+        let ron_str = ron::ser::to_string_pretty(self, PrettyConfig::new().struct_names(true))?;
+        fs::write(rc_file, ron_str)?;
+
+        Ok(())
     }
 }
