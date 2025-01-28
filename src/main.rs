@@ -1,3 +1,5 @@
+#![warn(clippy::all, clippy::pedantic)]
+
 use std::path::PathBuf;
 
 use anyhow::Context;
