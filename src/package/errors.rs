@@ -1,6 +1,8 @@
 use std::{io, path::PathBuf};
 
-#[derive(Debug, thiserror:: Error)]
+use thiserror::Error;
+
+#[derive(Debug, Error)]
 pub enum ParseError {
     #[error("no package config found at `{0}`")]
     FileNotFound(PathBuf),
@@ -10,7 +12,15 @@ pub enum ParseError {
     BadFormat(#[from] ron::error::SpannedError),
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Error)]
+pub enum UnboxError {
+    #[error("package doesn't exist: {0}")]
+    PackageNotFound(PathBuf),
+    #[error("{0}")]
+    AnyhowError(#[from] anyhow::Error),
+}
+
+#[derive(Debug, Error)]
 pub enum WriteError {
     #[error("failed to serialize into RON: `{0}`")]
     FailedToSerialize(#[from] ron::Error),
