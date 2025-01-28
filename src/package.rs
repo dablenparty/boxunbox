@@ -123,4 +123,54 @@ impl PackageConfig {
 
         Ok(())
     }
+
+    /// Unbox the `package` defined by this [`PackageConfig`] into the `target` defined by the
+    /// same. Unboxing is done by either symlinking the directory itself if the target doesn't
+    /// exist or by iterating over each directory entry and linking each. A more advanced algorithm
+    /// may be implemented at a later date.
+    ///
+    /// # Errors
+    ///
+    /// An error is returned if:
+    ///
+    /// - The `package` does not or cannot be verified to exist.
+    /// - The symlink cannot be created.
+    pub fn unbox(&self) -> Result<(), UnboxError> {
+        let PackageConfig { package, target } = self;
+        let link_path = target.join(PackageConfig::__rc_file_name());
+
+        if !package
+            .try_exists()
+            .with_context(|| format!("failed to check existence of package: {link_path:?}"))?
+        {
+            return Err(UnboxError::PackageNotFound(package.clone()));
+        }
+
+        /* TODO: different algorithms
+        - only files: instead of linking directories, create them at the target path and
+                           link their files instead.
+        - least links: like stow, create the fewest links possible (files & folders)
+        */
+
+        // std::fs::soft_link works fine, but is weird on Windows. The documentation recommends
+        // using OS-specific libraries to make intent explicit.
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(package, &link_path).with_context(|| {
+                format!("failed creating soft link: {package:?} -> {link_path:?}")
+            })?;
+        }
+
+        #[cfg(all(not(unix), windows))]
+        {
+            todo!("PackageConfig::unbox for Windows")
+        }
+
+        #[cfg(not(any(windows, unix)))]
+        {
+            unimplemented!()
+        }
+
+        Ok(())
+    }
 }
