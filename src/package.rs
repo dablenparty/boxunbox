@@ -4,6 +4,7 @@ use std::{
 };
 
 use anyhow::Context;
+use errors::{ParseError, UnboxError, WriteError};
 use ron::ser::PrettyConfig;
 use serde::{de::Error, Deserialize, Deserializer, Serialize};
 
@@ -83,12 +84,12 @@ impl PackageConfig {
     /// - The RC file doesn't exist.
     /// - Failure to read RC file.
     /// - Failure to parse RC file with [`ron`].
-    pub fn try_from_package<P: AsRef<Path>>(package: P) -> Result<Self, errors::ParseError> {
+    pub fn try_from_package<P: AsRef<Path>>(package: P) -> Result<Self, ParseError> {
         let package = package.as_ref();
         let rc_file = package.join(PackageConfig::__rc_file_name());
 
         if !rc_file.exists() {
-            return Err(errors::ParseError::FileNotFound(rc_file));
+            return Err(ParseError::FileNotFound(rc_file));
         }
 
         let rc_str = fs::read_to_string(&rc_file)
@@ -111,7 +112,7 @@ impl PackageConfig {
     ///
     /// - This struct fails to serialize into RON.
     /// - The file cannot be created/written to
-    pub fn save_to_package<P: AsRef<Path>>(&self, package: P) -> Result<(), errors::WriteError> {
+    pub fn save_to_package<P: AsRef<Path>>(&self, package: P) -> Result<(), WriteError> {
         let package = package.as_ref();
         let rc_file = package.join(PackageConfig::__rc_file_name());
 
