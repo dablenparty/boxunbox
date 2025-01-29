@@ -8,7 +8,11 @@ use errors::{ParseError, UnboxError, WriteError};
 use ron::ser::PrettyConfig;
 use serde::{de::Error, Deserialize, Deserializer, Serialize};
 
-use crate::{cli::BoxUnboxCli, constants::BASE_DIRS, utils::expand_into_pathbuf};
+use crate::{
+    cli::BoxUnboxCli,
+    constants::BASE_DIRS,
+    utils::{expand_into_pathbuf, os_symlink},
+};
 
 pub mod errors;
 
@@ -152,24 +156,9 @@ impl PackageConfig {
         - least links: like stow, create the fewest links possible (files & folders)
         */
 
-        // std::fs::soft_link works fine, but is weird on Windows. The documentation recommends
-        // using OS-specific libraries to make intent explicit.
-        #[cfg(unix)]
-        {
-            std::os::unix::fs::symlink(package, &link_path).with_context(|| {
-                format!("failed creating soft link: {package:?} -> {link_path:?}")
-            })?;
-        }
-
-        #[cfg(all(not(unix), windows))]
-        {
-            todo!("PackageConfig::unbox for Windows")
-        }
-
-        #[cfg(not(any(windows, unix)))]
-        {
-            unimplemented!()
-        }
+        os_symlink(package, &link_path).with_context(|| {
+            format!("failed creating symbolic link: {package:?} -> {link_path:?}")
+        })?;
 
         Ok(())
     }
