@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fs,
     path::{Path, PathBuf},
 };
@@ -141,11 +142,10 @@ impl PackageConfig {
     /// - The symlink cannot be created.
     pub fn unbox(&self) -> Result<(), UnboxError> {
         let PackageConfig { package, target } = self;
-        let link_path = target.join(PackageConfig::__rc_file_name());
 
         if !package
             .try_exists()
-            .with_context(|| format!("failed to check existence of package: {link_path:?}"))?
+            .with_context(|| format!("failed to check existence of package: {package:?}"))?
         {
             return Err(UnboxError::PackageNotFound(package.clone()));
         }
@@ -156,9 +156,53 @@ impl PackageConfig {
         - least links: like stow, create the fewest links possible (files & folders)
         */
 
-        os_symlink(package, &link_path).with_context(|| {
-            format!("failed creating symbolic link: {package:?} -> {link_path:?}")
-        })?;
+        // essentially guards against errors; if even ONE occurs, abort and return it.
+        let pkg_entries = walkdir::WalkDir::new(package)
+            .sort_by_file_name()
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let mut skip_dirs = Vec::new();
+
+        for entry in &pkg_entries {
+            // /path/to/package/entry
+            let path = entry.path();
+            // if the directory itself is linked, don't link the contents (that'd be circular)
+            if skip_dirs.iter().any(|d| path.strip_prefix(d).is_ok()) {
+                continue;
+            }
+            // entry
+            let stripped = path.strip_prefix(package).unwrap_or_else(|err| {
+                unreachable!(
+                    "failed to strip package prefix '{package:?}' from package entry '{path:?}': {err:?}"
+                )
+            });
+            // /path/to/target/entry
+            let new_target = target.join(stripped);
+            // if the target entry exists and is a directory, just skip it. otherwise
+            // return an error.
+            if new_target
+                .try_exists()
+                .with_context(|| format!("failed to verify existence of {new_target:?}"))?
+            {
+                if new_target.is_dir() {
+                    continue;
+                }
+
+                // exists, but is file/symlink
+                return Err(UnboxError::TargetAlreadyExists {
+                    package_entry: path.to_path_buf(),
+                    target_entry: new_target.clone(),
+                });
+            }
+
+            os_symlink(path, &new_target)
+                .with_context(|| format!("failed to symlink {path:?} -> {new_target:?}"))?;
+
+            if path.is_dir() {
+                skip_dirs.push(path);
+            }
+        }
 
         Ok(())
     }
