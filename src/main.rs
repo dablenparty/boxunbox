@@ -54,8 +54,8 @@ fn main() -> anyhow::Result<()> {
     #[cfg(debug_assertions)]
     println!("pkg_config={pkg_config:#?}");
 
-    // TODO: unbox package
     // TODO: regex ignore patterns
+    pkg_config.unbox().context("failed to unbox")?;
 
     Ok(())
 }
