@@ -8,7 +8,7 @@ use errors::{ParseError, UnboxError, WriteError};
 use ron::ser::PrettyConfig;
 use serde::{de::Error, Deserialize, Deserializer, Serialize};
 
-use crate::{cli::BoxUnboxCli, constants::BASE_DIRS, expand_into_pathbuf};
+use crate::{cli::BoxUnboxCli, constants::BASE_DIRS, utils::expand_into_pathbuf};
 
 pub mod errors;
 

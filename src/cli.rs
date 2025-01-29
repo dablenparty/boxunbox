@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
-use crate::{expand_into_pathbuf, package::PackageConfig};
+use crate::{package::PackageConfig, utils::expand_into_pathbuf};
 
 /**
 Parses a `&str` slice as a [`PathBuf`], expand `~` and environment variables and clean the path.
