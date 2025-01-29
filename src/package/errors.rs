@@ -14,10 +14,17 @@ pub enum ParseError {
 
 #[derive(Debug, Error)]
 pub enum UnboxError {
-    #[error("package doesn't exist: {0}")]
-    PackageNotFound(PathBuf),
     #[error("{0}")]
     AnyhowError(#[from] anyhow::Error),
+    #[error("package doesn't exist: {0}")]
+    PackageNotFound(PathBuf),
+    #[error("failed to unbox {package_entry} -> {target_entry}, destination already exists")]
+    TargetAlreadyExists {
+        package_entry: PathBuf,
+        target_entry: PathBuf,
+    },
+    #[error("failed to iterate package contents: {0}")]
+    WalkdirError(#[from] walkdir::Error),
 }
 
 #[derive(Debug, Error)]
