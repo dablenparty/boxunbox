@@ -39,6 +39,9 @@ fn __target_default() -> PathBuf {
 pub struct PackageConfig {
     #[serde(skip)]
     pub package: PathBuf,
+    #[serde(skip)]
+    pub dry_run: bool,
+
     #[serde(default = "__target_default", deserialize_with = "__de_pathbuf")]
     pub target: PathBuf,
 }
@@ -47,10 +50,15 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
     type Error = io::Error;
 
     fn try_from(value: BoxUnboxCli) -> Result<Self, Self::Error> {
-        let BoxUnboxCli { package, target } = value;
+        let BoxUnboxCli {
+            package,
+            target,
+            dry_run,
+        } = value;
         let conf = Self {
             package: package.canonicalize()?,
             target: target.unwrap_or_else(__target_default).canonicalize()?,
+            dry_run,
         };
         Ok(conf)
     }
@@ -72,6 +80,7 @@ impl PackageConfig {
         let conf = Self {
             package: self.package,
             target: cli.target.unwrap_or(self.target).canonicalize()?,
+            dry_run: cli.dry_run,
         };
 
         Ok(conf)
@@ -151,7 +160,11 @@ impl PackageConfig {
     /// - The `package` does not or cannot be verified to exist.
     /// - The symlink cannot be created.
     pub fn unbox(&self) -> Result<(), UnboxError> {
-        let PackageConfig { package, target } = self;
+        let PackageConfig {
+            package,
+            target,
+            dry_run,
+        } = self;
 
         if !package
             .try_exists()
@@ -213,12 +226,17 @@ impl PackageConfig {
             }
         }
 
-        #[cfg(debug_assertions)]
-        println!("planned links: {planned_links:#?}");
-
-        planned_links.into_iter().try_for_each(|(src, dest)| {
-            os_symlink(src, &dest).with_context(|| format!("failed to symlink {src:?} -> {dest:?}"))
-        })?;
+        if self.dry_run {
+            // TODO: better dry run output (colors?)
+            for (src, dest) in planned_links {
+                println!("{} -> {}", src.display(), dest.display());
+            }
+        } else {
+            planned_links.into_iter().try_for_each(|(src, dest)| {
+                os_symlink(src, &dest)
+                    .with_context(|| format!("failed to symlink {src:?} -> {dest:?}"))
+            })?;
+        }
 
         Ok(())
     }
