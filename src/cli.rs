@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 
 use clap::Parser;
+use regex::Regex;
 
-use crate::{package::PackageConfig, utils::expand_into_pathbuf};
+use crate::utils::expand_into_pathbuf;
 
 /**
 Parses a `&str` slice as a [`PathBuf`], expand `~` and environment variables and clean the path.
@@ -21,6 +22,8 @@ pub struct BoxUnboxCli {
     pub package: PathBuf,
     #[arg(short, long, value_parser = cli_parse_pathbuf)]
     pub target: Option<PathBuf>,
+    #[arg(short, long = "ignore")]
+    pub ignore_pats: Vec<Regex>,
 
     #[arg(long, default_value_t = false)]
     pub dry_run: bool,

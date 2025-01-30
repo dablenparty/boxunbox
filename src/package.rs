@@ -1,10 +1,12 @@
 use std::{
-    fs, io,
+    fs, io, iter,
     path::{Path, PathBuf},
+    sync::LazyLock,
 };
 
 use anyhow::Context;
 use errors::{ParseError, UnboxError, WriteError};
+use regex::Regex;
 use ron::ser::PrettyConfig;
 use serde::{de::Error, Deserialize, Deserializer, Serialize};
 
@@ -44,6 +46,8 @@ pub struct PackageConfig {
 
     #[serde(default = "__target_default", deserialize_with = "__de_pathbuf")]
     pub target: PathBuf,
+    #[serde(with = "serde_regex")]
+    pub ignore_pats: Vec<Regex>,
 }
 
 impl TryFrom<BoxUnboxCli> for PackageConfig {
@@ -53,11 +57,13 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
         let BoxUnboxCli {
             package,
             target,
+            ignore_pats,
             dry_run,
         } = value;
         let conf = Self {
             package: package.canonicalize()?,
             target: target.unwrap_or_else(__target_default).canonicalize()?,
+            ignore_pats,
             dry_run,
         };
         Ok(conf)
@@ -77,10 +83,14 @@ impl PackageConfig {
     ///
     /// - `cli` - CLI args to merge with.
     pub fn merge_with_cli(self, cli: BoxUnboxCli) -> io::Result<Self> {
+        let mut ignore_pats = self.ignore_pats;
+        ignore_pats.extend(cli.ignore_pats);
+
         let conf = Self {
             package: self.package,
             target: cli.target.unwrap_or(self.target).canonicalize()?,
             dry_run: cli.dry_run,
+            ignore_pats,
         };
 
         Ok(conf)
@@ -160,9 +170,12 @@ impl PackageConfig {
     /// - The `package` does not or cannot be verified to exist.
     /// - The symlink cannot be created.
     pub fn unbox(&self) -> Result<(), UnboxError> {
+        static RC_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new("\\.unboxrc").unwrap());
+
         let PackageConfig {
             package,
             target,
+            ignore_pats,
             dry_run,
         } = self;
 
@@ -172,6 +185,14 @@ impl PackageConfig {
         {
             return Err(UnboxError::PackageNotFound(package.clone()));
         }
+
+        // FIXME: currently, if file matches an ignore pattern but one of its parent directory's
+        // is already linked, the file ends up NOT being ignored since the parent folder is linked.
+        // Every day, the "only files" option seems better and better...
+        let ignore_pats = ignore_pats
+            .iter()
+            .chain(iter::once(&*RC_REGEX))
+            .collect::<Vec<&Regex>>();
 
         /* TODO: different algorithms
         - only files: instead of linking directories, create them at the target path and
@@ -183,8 +204,18 @@ impl PackageConfig {
         let pkg_entry_paths = walkdir::WalkDir::new(package)
             .sort_by_file_name()
             .into_iter()
-            .map(|res| res.map(|ent| ent.path().to_path_buf()))
-            .collect::<Result<Vec<_>, _>>()?;
+            .filter_map(|res| match res {
+                Ok(ent) => {
+                    let file_name = ent.file_name().to_string_lossy();
+                    if ignore_pats.iter().any(|pat| pat.is_match(&file_name)) {
+                        None
+                    } else {
+                        Some(Ok(ent.path().to_path_buf()))
+                    }
+                }
+                Err(err) => Some(Err(err)),
+            })
+            .collect::<Result<Vec<PathBuf>, _>>()?;
 
         let mut linked_dirs = Vec::new();
         let mut planned_links = Vec::new();
@@ -226,7 +257,7 @@ impl PackageConfig {
             }
         }
 
-        if self.dry_run {
+        if *dry_run {
             // TODO: better dry run output (colors?)
             for (src, dest) in planned_links {
                 println!("{} -> {}", src.display(), dest.display());
