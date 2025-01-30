@@ -41,7 +41,11 @@ See the following for error descriptions:
 - Unix: [`std::os::unix::fs::symlink`]
 - Windows: TODO
 */
-pub fn os_symlink<P: AsRef<Path>>(original: P, link: P) -> io::Result<()> {
+pub fn os_symlink<P, Q>(original: P, link: Q) -> io::Result<()>
+where
+    P: AsRef<Path>,
+    Q: AsRef<Path>,
+{
     let original = original.as_ref();
     let link = link.as_ref();
     // [`std::fs::soft_link`] works fine, but is weird on Windows. The documentation recommends
