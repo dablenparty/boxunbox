@@ -1,6 +1,6 @@
 use std::{
     collections::HashSet,
-    fs,
+    fs, io,
     path::{Path, PathBuf},
 };
 
@@ -44,6 +44,19 @@ pub struct PackageConfig {
     pub target: PathBuf,
 }
 
+impl TryFrom<BoxUnboxCli> for PackageConfig {
+    type Error = io::Error;
+
+    fn try_from(value: BoxUnboxCli) -> Result<Self, Self::Error> {
+        let BoxUnboxCli { package, target } = value;
+        let conf = Self {
+            package: package.canonicalize()?,
+            target: target.unwrap_or_else(__target_default),
+        };
+        Ok(conf)
+    }
+}
+
 impl PackageConfig {
     /// Expected file name of the RC file.
     const fn __rc_file_name() -> &'static str {
@@ -51,29 +64,18 @@ impl PackageConfig {
         ".unboxrc.ron"
     }
 
-    /// Make a new [`PackageConfig`] with a given [`Path`] `p` and default options.
-    ///
-    /// # Arguments
-    ///
-    /// - `p` - Package to make config for
-    pub fn new<P: AsRef<Path>>(p: P) -> Self {
-        Self {
-            package: p.as_ref().to_path_buf(),
-            // use the ~ instead of the absolute path for simple multi-system support
-            target: PathBuf::from("~/"),
-        }
-    }
-
     /// Merge with [`BoxUnboxCli`] args. Consumes both this struct and the `cli` args.
     ///
     /// # Arguments
     ///
     /// - `cli` - CLI args to merge with.
-    pub fn merge_with_cli(self, cli: BoxUnboxCli) -> Self {
-        Self {
-            package: cli.package,
-            target: cli.target.unwrap_or(self.target),
-        }
+    pub fn merge_with_cli(self, cli: BoxUnboxCli) -> io::Result<Self> {
+        let conf = Self {
+            package: self.package,
+            target: cli.target.unwrap_or(self.target).canonicalize()?,
+        };
+
+        Ok(conf)
     }
 
     /// Try to parse [`PackageConfig`] from a given package path.
@@ -100,7 +102,8 @@ impl PackageConfig {
         let rc_str = fs::read_to_string(&rc_file)
             .with_context(|| format!("failed to read file: {rc_file:?}"))?;
 
-        let rc = ron::from_str(&rc_str)?;
+        let mut rc: PackageConfig = ron::from_str(&rc_str)?;
+        rc.package = package.to_path_buf();
 
         Ok(rc)
     }
