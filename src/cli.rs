@@ -21,19 +21,7 @@ pub struct BoxUnboxCli {
     pub package: PathBuf,
     #[arg(short, long, value_parser = cli_parse_pathbuf)]
     pub target: Option<PathBuf>,
-}
 
-impl From<PackageConfig> for BoxUnboxCli {
-    fn from(value: PackageConfig) -> Self {
-        Self::from(&value)
-    }
-}
-
-impl From<&PackageConfig> for BoxUnboxCli {
-    fn from(value: &PackageConfig) -> Self {
-        Self {
-            package: value.package.clone(),
-            target: Some(value.target.clone()),
-        }
-    }
+    #[arg(long, default_value_t = false)]
+    pub dry_run: bool,
 }
