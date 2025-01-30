@@ -36,7 +36,7 @@ fn __target_default() -> PathBuf {
     BASE_DIRS.home_dir().to_path_buf()
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PackageConfig {
     #[serde(skip)]
     pub package: PathBuf,
@@ -121,12 +121,20 @@ impl PackageConfig {
     /// - This struct fails to serialize into RON.
     /// - The file cannot be created/written to
     pub fn save_to_package<P: AsRef<Path>>(&self, package: P) -> Result<(), WriteError> {
+        let mut clone_self = self.clone();
+        let home_dir = BASE_DIRS.home_dir();
+
+        if let Ok(path) = clone_self.target.strip_prefix(home_dir) {
+            clone_self.target = PathBuf::from("~/").join(path);
+        }
+
         let package = package.as_ref();
         let rc_file = package.join(PackageConfig::__rc_file_name());
 
         // TODO: do something if the config already exists, maybe an error?
         // WARN: this overwrites the existing file, be careful!
-        let ron_str = ron::ser::to_string_pretty(self, PrettyConfig::new().struct_names(true))?;
+        let ron_str =
+            ron::ser::to_string_pretty(&clone_self, PrettyConfig::new().struct_names(true))?;
         fs::write(rc_file, ron_str)?;
 
         Ok(())
