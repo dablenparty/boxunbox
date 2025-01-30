@@ -51,7 +51,7 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
         let BoxUnboxCli { package, target } = value;
         let conf = Self {
             package: package.canonicalize()?,
-            target: target.unwrap_or_else(__target_default),
+            target: target.unwrap_or_else(__target_default).canonicalize()?,
         };
         Ok(conf)
     }
