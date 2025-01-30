@@ -1,5 +1,4 @@
 use std::{
-    collections::HashSet,
     fs, io,
     path::{Path, PathBuf},
 };
@@ -164,8 +163,8 @@ impl PackageConfig {
         /* TODO: different algorithms
         - only files: instead of linking directories, create them at the target path and
                            link their files instead.
-        - least links: like stow, create the fewest links possible (files & folders)
         */
+        // currently tries to create as few links as possible
 
         // essentially guards against errors; if even ONE occurs, abort and return it.
         let pkg_entry_paths = walkdir::WalkDir::new(package)
@@ -175,6 +174,7 @@ impl PackageConfig {
             .collect::<Result<Vec<_>, _>>()?;
 
         let mut linked_dirs = Vec::new();
+        let mut planned_links = Vec::new();
 
         // /path/to/package/entry
         for path in &pkg_entry_paths {
@@ -202,18 +202,23 @@ impl PackageConfig {
 
                 // exists, but is file/symlink
                 return Err(UnboxError::TargetAlreadyExists {
-                    package_entry: path.to_path_buf(),
+                    package_entry: path.clone(),
                     target_entry: new_target.clone(),
                 });
             }
 
-            os_symlink(path, &new_target)
-                .with_context(|| format!("failed to symlink {path:?} -> {new_target:?}"))?;
-
+            planned_links.push((path, new_target));
             if path.is_dir() {
                 linked_dirs.push(path);
             }
         }
+
+        #[cfg(debug_assertions)]
+        println!("planned links: {planned_links:#?}");
+
+        planned_links.into_iter().try_for_each(|(src, dest)| {
+            os_symlink(src, &dest).with_context(|| format!("failed to symlink {src:?} -> {dest:?}"))
+        })?;
 
         Ok(())
     }
