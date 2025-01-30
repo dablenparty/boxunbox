@@ -3,7 +3,6 @@
 use anyhow::Context;
 use clap::Parser;
 use cli::BoxUnboxCli;
-use constants::BASE_DIRS;
 use package::{errors::ParseError, PackageConfig};
 
 mod cli;
@@ -32,7 +31,7 @@ fn main() -> anyhow::Result<()> {
         }
         Err(err) => {
             if let ParseError::FileNotFound(rc_path) = err {
-                let mut config = PackageConfig::try_from(cli)?;
+                let config = PackageConfig::try_from(cli)?;
                 #[cfg(debug_assertions)]
                 {
                     eprintln!(
@@ -43,7 +42,6 @@ fn main() -> anyhow::Result<()> {
                 }
 
                 config.save_to_package(&package)?;
-                config.target = BASE_DIRS.home_dir().to_path_buf();
 
                 Ok(config)
             } else {
