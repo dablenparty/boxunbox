@@ -168,18 +168,18 @@ impl PackageConfig {
         */
 
         // essentially guards against errors; if even ONE occurs, abort and return it.
-        let pkg_entries = walkdir::WalkDir::new(package)
+        let pkg_entry_paths = walkdir::WalkDir::new(package)
             .sort_by_file_name()
             .into_iter()
+            .map(|res| res.map(|ent| ent.path().to_path_buf()))
             .collect::<Result<Vec<_>, _>>()?;
 
-        let mut skip_dirs = Vec::new();
+        let mut linked_dirs = Vec::new();
 
-        for entry in &pkg_entries {
-            // /path/to/package/entry
-            let path = entry.path();
-            // if the directory itself is linked, don't link the contents (that'd be circular)
-            if skip_dirs.iter().any(|d| path.strip_prefix(d).is_ok()) {
+        // /path/to/package/entry
+        for path in &pkg_entry_paths {
+            // if a parent directory is linked, don't link the file as that'd be circular
+            if linked_dirs.iter().any(|d| path.strip_prefix(d).is_ok()) {
                 continue;
             }
             // entry
@@ -211,7 +211,7 @@ impl PackageConfig {
                 .with_context(|| format!("failed to symlink {path:?} -> {new_target:?}"))?;
 
             if path.is_dir() {
-                skip_dirs.push(path);
+                linked_dirs.push(path);
             }
         }
 
