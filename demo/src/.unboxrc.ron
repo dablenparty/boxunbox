@@ -1,0 +1,4 @@
+PackageConfig(
+    target: "~/Documents/boxunbox/demo/dest",
+    ignore_pats: ["^test_ignore.*$"],
+)
