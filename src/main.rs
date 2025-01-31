@@ -3,7 +3,7 @@
 use anyhow::Context;
 use clap::Parser;
 use cli::BoxUnboxCli;
-use package::{errors::ParseError, PackageConfig};
+use package::{errors::ParseError, plan::UnboxPlan, PackageConfig};
 
 mod cli;
 mod constants;
@@ -58,7 +58,11 @@ fn main() -> anyhow::Result<()> {
     #[cfg(debug_assertions)]
     println!("pkg_config={pkg_config:#?}");
 
-    pkg_config.unbox().context("failed to unbox")?;
+    let unbox_plan = UnboxPlan::try_from_package(&package, pkg_config)
+        .context("failed to create unboxing plan")?;
+    unbox_plan
+        .execute()
+        .context("failed to execute unbox plan")?;
 
     Ok(())
 }

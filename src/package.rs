@@ -1,22 +1,18 @@
 use std::{
-    fs, io, iter,
+    fs, io,
     path::{Path, PathBuf},
-    sync::LazyLock,
 };
 
 use anyhow::Context;
-use errors::{ParseError, UnboxError, WriteError};
+use errors::{ParseError, WriteError};
 use regex::Regex;
 use ron::ser::PrettyConfig;
 use serde::{de::Error, Deserialize, Deserializer, Serialize};
 
-use crate::{
-    cli::BoxUnboxCli,
-    constants::BASE_DIRS,
-    utils::{expand_into_pathbuf, os_symlink},
-};
+use crate::{cli::BoxUnboxCli, constants::BASE_DIRS, utils::expand_into_pathbuf};
 
 pub mod errors;
+pub mod plan;
 
 /// Utility function to deserialize a [`PathBuf`] while expanding environment variables and `~`.
 ///
@@ -155,165 +151,6 @@ impl PackageConfig {
         let ron_str =
             ron::ser::to_string_pretty(&clone_self, PrettyConfig::new().struct_names(true))?;
         fs::write(rc_file, ron_str)?;
-
-        Ok(())
-    }
-
-    /// Unbox the `package` defined by this [`PackageConfig`] into the `target` defined by the
-    /// same. Unboxing is done by either symlinking the directory itself if the target doesn't
-    /// exist or by iterating over each directory entry and linking each. A more advanced algorithm
-    /// may be implemented at a later date.
-    ///
-    /// # Errors
-    ///
-    /// An error is returned if:
-    ///
-    /// - The `package` does not or cannot be verified to exist.
-    /// - The symlink cannot be created.
-    pub fn unbox(&self) -> Result<(), UnboxError> {
-        static RC_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new("\\.unboxrc").unwrap());
-
-        let do_dry_run = self.dry_run;
-        let root_package = self.package.clone();
-        match root_package.try_exists() {
-            Ok(true) => {}
-            Ok(false) | Err(_) => return Err(UnboxError::PackageNotFound(root_package.clone())),
-        }
-
-        // TODO: least links algorithm?
-        // At the very least, I want a way to choose between the algorithms
-
-        /*
-        NOTE: currently only creates file symlinks, not directories
-        I chose this because I had issues where the directory would get linked, then files
-        placed there by other programs would show up in the original location, which I don't
-        want.
-        */
-
-        let mut config_stack = vec![self.clone()];
-
-        /// Utility macro that expands to get the last config off the config stack.
-        macro_rules! clone_last_config {
-            () => {
-                config_stack
-                    .last()
-                    .expect("there should be at least one config in the stack")
-                    .clone()
-            };
-        }
-
-        // essentially guards against errors; if even ONE occurs, abort and return it.
-        let pkg_entry_paths = walkdir::WalkDir::new(&root_package)
-            .sort_by_file_name()
-            .into_iter()
-            .skip(1) // skip root package
-            .map(|res| res.map(|ent| ent.path().to_path_buf()))
-            .collect::<Result<Vec<PathBuf>, _>>()?;
-
-        // plan your moves first before doing anything in case something fails; don't want to get
-        // halfway done unboxing just to realize you have to box it all back up!
-        // TODO: rollback plans on error (consider a plan struct)
-        let mut planned_links = Vec::new();
-        let mut planned_dirs = Vec::new();
-
-        for path in pkg_entry_paths {
-            let path_is_dir = path.is_dir();
-
-            let last_config = clone_last_config!();
-
-            // If we're in a subdir of the last config, keep using it. Otherwise, pop it off the
-            // stack and get the next one.
-            let last_config = if path.starts_with(&last_config.package) {
-                last_config
-            } else {
-                let _ = config_stack
-                    .pop()
-                    .expect("there should be at least one config in the stack");
-                clone_last_config!()
-            };
-
-            // read the config of this subdir
-            // if the config exists, add it to the stack; if not, don't care
-            match PackageConfig::try_from_package(&path) {
-                Ok(config) => config_stack.push(config),
-                Err(ParseError::FileNotFound(_)) => {}
-                Err(err) => return Err(err.into()),
-            }
-
-            let file_name = path
-                .file_name()
-                .unwrap_or_else(|| path.as_os_str())
-                .to_string_lossy();
-
-            // check all ignore patterns in the stack
-            if config_stack
-                .iter()
-                .flat_map(|conf| conf.ignore_pats.as_slice())
-                .chain(iter::once(&*RC_REGEX))
-                .any(|re| re.is_match(&file_name))
-            {
-                #[cfg(debug_assertions)]
-                println!("ignoring file {path:?}");
-
-                continue;
-            }
-
-            let PackageConfig {
-                package, target, ..
-            } = last_config;
-
-            // /path/to/package/entry -> /entry
-            let stripped = path.strip_prefix(&package).unwrap_or_else(|err| {
-                unreachable!(
-                    "failed to strip package prefix '{package:?}' from package entry '{path:?}': {err:?}"
-                )
-            });
-            // /entry -> /path/to/target/entry
-            let new_target = target.join(stripped);
-
-            // if the target exists, is a directory, and `path_is_dir`, just skip it; otherwise,
-            // return an error.
-            if new_target
-                .try_exists()
-                .with_context(|| format!("failed to verify existence of {new_target:?}"))?
-            {
-                // if both the original and target are already directories
-                if path_is_dir && new_target.is_dir() {
-                    continue;
-                }
-
-                // exists, but is file/symlink
-                return Err(UnboxError::TargetAlreadyExists {
-                    package_entry: path.clone(),
-                    target_entry: new_target.clone(),
-                });
-            }
-
-            if path_is_dir {
-                planned_dirs.push(new_target);
-            } else {
-                planned_links.push((path, new_target));
-            }
-        }
-
-        if do_dry_run {
-            // TODO: better dry run output (colors?)
-            for dir in planned_dirs {
-                println!("mkdir {}", dir.display());
-            }
-            for (src, dest) in planned_links {
-                println!("{} -> {}", src.display(), dest.display());
-            }
-        } else {
-            // make directories first, then link target files
-            planned_dirs.into_iter().try_for_each(|dir| {
-                fs::create_dir(&dir).with_context(|| format!("failed to mkdir {dir:?}"))
-            })?;
-            planned_links.into_iter().try_for_each(|(src, dest)| {
-                os_symlink(&src, &dest)
-                    .with_context(|| format!("failed to symlink {src:?} -> {dest:?}"))
-            })?;
-        }
 
         Ok(())
     }
