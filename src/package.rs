@@ -187,19 +187,20 @@ impl PackageConfig {
             return Err(UnboxError::PackageNotFound(package.clone()));
         }
 
-        // FIXME: currently, if file matches an ignore pattern but one of its parent directory's
-        // is already linked, the file ends up NOT being ignored since the parent folder is linked.
-        // Every day, the "only files" option seems better and better...
         let ignore_pats = ignore_pats
             .iter()
             .chain(iter::once(&*RC_REGEX))
             .collect::<Vec<&Regex>>();
 
-        /* TODO: different algorithms
-        - only files: instead of linking directories, create them at the target path and
-                           link their files instead.
+        // TODO: least links algorithm?
+        // At the very least, I want a way to choose between the algorithms
+
+        /*
+        NOTE: currently only creates file symlinks, not directories
+        I chose this because I had issues where the directory would get linked, then files
+        placed there by other programs would show up in the original location, which I don't
+        want.
         */
-        // currently tries to create as few links as possible
 
         // essentially guards against errors; if even ONE occurs, abort and return it.
         let pkg_entry_paths = walkdir::WalkDir::new(package)
@@ -218,16 +219,12 @@ impl PackageConfig {
             })
             .collect::<Result<Vec<PathBuf>, _>>()?;
 
-        let mut linked_dirs = Vec::new();
         let mut planned_links = Vec::new();
+        let mut planned_dirs = Vec::new();
 
         // /path/to/package/entry
-        for path in &pkg_entry_paths {
-            // if a parent directory is linked, don't link the file as that'd be circular
-            if linked_dirs.iter().any(|d| path.strip_prefix(d).is_ok()) {
-                continue;
-            }
-            // entry
+        for path in pkg_entry_paths {
+            // /entry
             let stripped = path.strip_prefix(package).unwrap_or_else(|err| {
                 unreachable!(
                     "failed to strip package prefix '{package:?}' from package entry '{path:?}': {err:?}"
@@ -235,13 +232,16 @@ impl PackageConfig {
             });
             // /path/to/target/entry
             let new_target = target.join(stripped);
-            // if the target entry exists and is a directory, just skip it. otherwise
+            let path_is_dir = path.is_dir();
+
+            // if the target exists, is a directory, and `path_is_dir`, just skip it; otherwise,
             // return an error.
             if new_target
                 .try_exists()
                 .with_context(|| format!("failed to verify existence of {new_target:?}"))?
             {
-                if new_target.is_dir() {
+                // if both the original and target are already directories
+                if path_is_dir && new_target.is_dir() {
                     continue;
                 }
 
@@ -252,20 +252,28 @@ impl PackageConfig {
                 });
             }
 
-            planned_links.push((path, new_target));
-            if path.is_dir() {
-                linked_dirs.push(path);
+            if path_is_dir {
+                planned_dirs.push(new_target);
+            } else {
+                planned_links.push((path, new_target));
             }
         }
 
         if *dry_run {
             // TODO: better dry run output (colors?)
+            for dir in planned_dirs {
+                println!("mkdir {}", dir.display());
+            }
             for (src, dest) in planned_links {
                 println!("{} -> {}", src.display(), dest.display());
             }
         } else {
+            // make directories first, then link target files
+            planned_dirs.into_iter().try_for_each(|dir| {
+                fs::create_dir(&dir).with_context(|| format!("failed to mkdir {dir:?}"))
+            })?;
             planned_links.into_iter().try_for_each(|(src, dest)| {
-                os_symlink(src, &dest)
+                os_symlink(&src, &dest)
                     .with_context(|| format!("failed to symlink {src:?} -> {dest:?}"))
             })?;
         }
