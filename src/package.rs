@@ -173,24 +173,12 @@ impl PackageConfig {
     pub fn unbox(&self) -> Result<(), UnboxError> {
         static RC_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new("\\.unboxrc").unwrap());
 
-        let PackageConfig {
-            package,
-            target,
-            ignore_pats,
-            dry_run,
-        } = self;
-
-        if !package
-            .try_exists()
-            .with_context(|| format!("failed to check existence of package: {package:?}"))?
-        {
-            return Err(UnboxError::PackageNotFound(package.clone()));
+        let do_dry_run = self.dry_run;
+        let root_package = self.package.clone();
+        match root_package.try_exists() {
+            Ok(true) => {}
+            Ok(false) | Err(_) => return Err(UnboxError::PackageNotFound(root_package.clone())),
         }
-
-        let ignore_pats = ignore_pats
-            .iter()
-            .chain(iter::once(&*RC_REGEX))
-            .collect::<Vec<&Regex>>();
 
         // TODO: least links algorithm?
         // At the very least, I want a way to choose between the algorithms
@@ -202,37 +190,86 @@ impl PackageConfig {
         want.
         */
 
+        let mut config_stack = vec![self.clone()];
+
+        /// Utility macro that expands to get the last config off the config stack.
+        macro_rules! clone_last_config {
+            () => {
+                config_stack
+                    .last()
+                    .expect("there should be at least one config in the stack")
+                    .clone()
+            };
+        }
+
         // essentially guards against errors; if even ONE occurs, abort and return it.
-        let pkg_entry_paths = walkdir::WalkDir::new(package)
+        let pkg_entry_paths = walkdir::WalkDir::new(&root_package)
             .sort_by_file_name()
             .into_iter()
-            .filter_map(|res| match res {
-                Ok(ent) => {
-                    let file_name = ent.file_name().to_string_lossy();
-                    if ignore_pats.iter().any(|pat| pat.is_match(&file_name)) {
-                        None
-                    } else {
-                        Some(Ok(ent.path().to_path_buf()))
-                    }
-                }
-                Err(err) => Some(Err(err)),
-            })
+            .skip(1) // skip root package
+            .map(|res| res.map(|ent| ent.path().to_path_buf()))
             .collect::<Result<Vec<PathBuf>, _>>()?;
 
+        // plan your moves first before doing anything in case something fails; don't want to get
+        // halfway done unboxing just to realize you have to box it all back up!
+        // TODO: rollback plans on error (consider a plan struct)
         let mut planned_links = Vec::new();
         let mut planned_dirs = Vec::new();
 
-        // /path/to/package/entry
         for path in pkg_entry_paths {
-            // /entry
-            let stripped = path.strip_prefix(package).unwrap_or_else(|err| {
+            let path_is_dir = path.is_dir();
+
+            let last_config = clone_last_config!();
+
+            // If we're in a subdir of the last config, keep using it. Otherwise, pop it off the
+            // stack and get the next one.
+            let last_config = if path.starts_with(&last_config.package) {
+                last_config
+            } else {
+                let _ = config_stack
+                    .pop()
+                    .expect("there should be at least one config in the stack");
+                clone_last_config!()
+            };
+
+            // read the config of this subdir
+            // if the config exists, add it to the stack; if not, don't care
+            match PackageConfig::try_from_package(&path) {
+                Ok(config) => config_stack.push(config),
+                Err(ParseError::FileNotFound(_)) => {}
+                Err(err) => return Err(err.into()),
+            }
+
+            let file_name = path
+                .file_name()
+                .unwrap_or_else(|| path.as_os_str())
+                .to_string_lossy();
+
+            // check all ignore patterns in the stack
+            if config_stack
+                .iter()
+                .flat_map(|conf| conf.ignore_pats.as_slice())
+                .chain(iter::once(&*RC_REGEX))
+                .any(|re| re.is_match(&file_name))
+            {
+                #[cfg(debug_assertions)]
+                println!("ignoring file {path:?}");
+
+                continue;
+            }
+
+            let PackageConfig {
+                package, target, ..
+            } = last_config;
+
+            // /path/to/package/entry -> /entry
+            let stripped = path.strip_prefix(&package).unwrap_or_else(|err| {
                 unreachable!(
                     "failed to strip package prefix '{package:?}' from package entry '{path:?}': {err:?}"
                 )
             });
-            // /path/to/target/entry
+            // /entry -> /path/to/target/entry
             let new_target = target.join(stripped);
-            let path_is_dir = path.is_dir();
 
             // if the target exists, is a directory, and `path_is_dir`, just skip it; otherwise,
             // return an error.
@@ -259,7 +296,7 @@ impl PackageConfig {
             }
         }
 
-        if *dry_run {
+        if do_dry_run {
             // TODO: better dry run output (colors?)
             for dir in planned_dirs {
                 println!("mkdir {}", dir.display());
