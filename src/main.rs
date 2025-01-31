@@ -29,25 +29,24 @@ fn main() -> anyhow::Result<()> {
             // TODO: better errors for this function
             rc.merge_with_cli(cli)?
         }
-        Err(err) => {
-            if let ParseError::FileNotFound(rc_path) = err {
-                let config = PackageConfig::try_from(cli)?;
-                #[cfg(debug_assertions)]
-                {
-                    eprintln!(
-                        "didn't find RC file @ {}, creating default...",
-                        rc_path.display()
-                    );
-                    eprintln!("config={config:#?}");
-                }
 
-                config.save_to_package(&package)?;
+        Err(ParseError::FileNotFound(rc_path)) => {
+            let config = PackageConfig::try_from(cli)?;
+            #[cfg(debug_assertions)]
+            {
+                eprintln!(
+                    "didn't find RC file @ {}, creating default...",
+                    rc_path.display()
+                );
+                eprintln!("config={config:#?}");
+            }
 
-                Ok(config)
-            } else {
-                Err(err)
-            }?
+            config.save_to_package(&package)?;
+
+            config
         }
+
+        Err(err) => return Err(err.into()),
     };
 
     #[cfg(debug_assertions)]
