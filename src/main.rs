@@ -21,6 +21,7 @@ fn main() -> anyhow::Result<()> {
         .clone()
         .canonicalize()
         .with_context(|| format!("failed to canonicalize {:?}", &cli.package))?;
+    let do_box = cli.perform_box;
 
     let pkg_config = match PackageConfig::try_from_package(&package) {
         Ok(rc) => {
@@ -60,9 +61,19 @@ fn main() -> anyhow::Result<()> {
 
     let unbox_plan = UnboxPlan::try_from_package(&package, pkg_config)
         .context("failed to create unboxing plan")?;
-    unbox_plan
-        .execute()
-        .context("failed to execute unbox plan")?;
 
-    Ok(())
+    if do_box {
+        unbox_plan.rollback().context("failed to box up package")
+    } else {
+        unbox_plan.check_plan()?;
+        unbox_plan
+            .execute()
+            .context("failed to execute unbox plan")
+            .or_else(|err| {
+                println!("An error occurred while executing the unboxing plan: {err:?}");
+                unbox_plan
+                    .rollback()
+                    .context("failed to rollback unbox plan")
+            })
+    }
 }

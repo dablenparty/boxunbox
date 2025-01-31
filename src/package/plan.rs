@@ -23,8 +23,7 @@ pub struct UnboxPlan {
 
 impl UnboxPlan {
     /// Generate an [`UnboxPlan`] from a given `root_package`. This is quite involved. First,
-    /// it checks that `root_package` exists. Then, it iterates over the entire contents of the
-    /// directory and batch checks file permissions. It then iterates once more, this time
+    /// it checks that `root_package` exists. It then iterates over the directory contents,
     /// planning which directories to create and which files to symlink based on the ignore
     /// patterns.
     ///
@@ -39,7 +38,6 @@ impl UnboxPlan {
     /// - `root_package` is not found/readable
     /// - Any [`PackageConfig`]'s fail to parse.
     /// - Any package sub-dirs or files cannot be read.
-    /// - The link target for a file already exists.
     pub fn try_from_package<P: AsRef<Path>>(
         root_package: P,
         root_config: PackageConfig,
@@ -76,12 +74,11 @@ impl UnboxPlan {
         }
 
         // essentially guards against errors; if even ONE occurs, abort and return it.
-        let pkg_entry_paths = walkdir::WalkDir::new(&root_package)
+        let pkg_entry_path_iter = walkdir::WalkDir::new(&root_package)
             .sort_by_file_name()
             .into_iter()
             .skip(1) // skip root package
-            .map(|res| res.map(|ent| ent.path().to_path_buf()))
-            .collect::<Result<Vec<PathBuf>, _>>()?;
+            .map(|res| res.map(|ent| ent.path().to_path_buf()));
 
         // plan your moves first before doing anything in case something fails; don't want to get
         // halfway done unboxing just to realize you have to box it all back up!
@@ -89,7 +86,8 @@ impl UnboxPlan {
         let mut planned_links = Vec::new();
         let mut planned_dirs = Vec::new();
 
-        for path in pkg_entry_paths {
+        for path in pkg_entry_path_iter {
+            let path = path?;
             let path_is_dir = path.is_dir();
 
             let last_config = clone_last_config!();
@@ -144,24 +142,6 @@ impl UnboxPlan {
             // /entry -> /path/to/target/entry
             let new_target = target.join(stripped);
 
-            // if the target exists, is a directory, and `path_is_dir`, just skip it; otherwise,
-            // return an error.
-            if new_target
-                .try_exists()
-                .with_context(|| format!("failed to verify existence of {new_target:?}"))?
-            {
-                // if both the original and target are already directories
-                if path_is_dir && new_target.is_dir() {
-                    continue;
-                }
-
-                // exists, but is file/symlink
-                return Err(UnboxError::TargetAlreadyExists {
-                    package_entry: path.clone(),
-                    target_entry: new_target.clone(),
-                });
-            }
-
             if path_is_dir {
                 planned_dirs.push(new_target);
             } else {
@@ -177,6 +157,34 @@ impl UnboxPlan {
         Ok(plan)
     }
 
+    /// Check if this [`UnboxPlan`] can be executed. Note that this does not guarantee that an
+    /// error will not happen, but can at least check as much as possible. This function is not
+    /// called when running with the `--box` flag.
+    ///
+    /// # Errors
+    ///
+    /// An error is retured if a target link already exists.
+    pub fn check_plan(&self) -> Result<(), UnboxError> {
+        self.links.iter().try_for_each(|(src, dest)| {
+            if dest
+                .try_exists()
+                .with_context(|| format!("failed to verify existence of {dest:?}"))?
+            {
+                Err(UnboxError::TargetAlreadyExists {
+                    package_entry: src.clone(),
+                    target_entry: dest.clone(),
+                })
+            } else {
+                Ok(())
+            }
+        })
+    }
+
+    /// Execute this [`UnboxPlan`]. You may want to call [`UnboxPlan::check_plan`] before this.
+    ///
+    /// # Errors
+    ///
+    /// An error is returned if the directories or symlinks cannot be created.
     pub fn execute(&self) -> anyhow::Result<()> {
         let Self {
             links,
@@ -193,7 +201,15 @@ impl UnboxPlan {
             // make directories first, then link target files
             dirs.iter().try_for_each(|dir| {
                 // use create_dir because they should be in hierarchal order
-                fs::create_dir(dir).with_context(|| format!("failed to mkdir {dir:?}"))
+                dir.try_exists()
+                    .with_context(|| format!("failed to verify existence of dir {dir:?}"))
+                    .and_then(|exists| {
+                        if exists {
+                            Ok(())
+                        } else {
+                            fs::create_dir(dir).with_context(|| format!("failed to mkdir {dir:?}"))
+                        }
+                    })
             })?;
             links.iter().try_for_each(|(src, dest)| {
                 os_symlink(src, dest)
@@ -202,5 +218,18 @@ impl UnboxPlan {
         }
 
         Ok(())
+    }
+
+    pub fn rollback(&self) -> anyhow::Result<()> {
+        self.links.iter().try_for_each(|(_, dest)| {
+            if dest
+                .try_exists()
+                .with_context(|| format!("failed to check existence of {dest:?}"))?
+            {
+                fs::remove_file(dest).with_context(|| format!("failed to remove file {dest:?}"))?;
+            }
+
+            Ok(())
+        })
     }
 }
