@@ -59,6 +59,7 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
             target,
             ignore_pats,
             dry_run,
+            ..
         } = value;
         let conf = Self {
             package: package.canonicalize()?,
@@ -82,13 +83,13 @@ impl PackageConfig {
     /// # Arguments
     ///
     /// - `cli` - CLI args to merge with.
-    pub fn merge_with_cli(self, cli: BoxUnboxCli) -> io::Result<Self> {
+    pub fn merge_with_cli(self, cli: &BoxUnboxCli) -> io::Result<Self> {
         let mut ignore_pats = self.ignore_pats;
-        ignore_pats.extend(cli.ignore_pats);
+        ignore_pats.extend(cli.ignore_pats.clone());
 
         let conf = Self {
             package: self.package,
-            target: cli.target.unwrap_or(self.target).canonicalize()?,
+            target: cli.target.clone().unwrap_or(self.target).canonicalize()?,
             dry_run: cli.dry_run,
             ignore_pats,
         };
