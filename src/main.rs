@@ -37,6 +37,7 @@ fn main() -> anyhow::Result<()> {
             config
         }
 
+        #[allow(unused_variables)]
         Err(ParseError::FileNotFound(rc_path)) => {
             let config = PackageConfig::try_from(cli)?;
             #[cfg(debug_assertions)]
