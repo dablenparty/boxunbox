@@ -20,14 +20,20 @@ fn main() -> anyhow::Result<()> {
         .package
         .clone()
         .canonicalize()
-        .with_context(|| format!("failed to canonicalize {:?}", cli.package))?;
+        .with_context(|| format!("failed to canonicalize {:?}", &cli.package))?;
 
     let pkg_config = match PackageConfig::try_from_package(&package) {
         Ok(rc) => {
             #[cfg(debug_assertions)]
             println!("parsed_rc={rc:#?}");
             // TODO: better errors for this function
-            rc.merge_with_cli(cli)?
+            let config = rc.merge_with_cli(&cli)?;
+            if cli.save_config {
+                println!("saving config...");
+                config.save_to_package(&package)?;
+            }
+
+            config
         }
 
         Err(ParseError::FileNotFound(rc_path)) => {

@@ -27,4 +27,6 @@ pub struct BoxUnboxCli {
 
     #[arg(long, default_value_t = false)]
     pub dry_run: bool,
+    #[arg(long, default_value_t = false)]
+    pub save_config: bool,
 }
