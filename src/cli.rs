@@ -25,8 +25,11 @@ pub struct BoxUnboxCli {
     #[arg(short, long = "ignore")]
     pub ignore_pats: Vec<Regex>,
 
-    #[arg(long, default_value_t = false)]
+    #[arg(long)]
     pub dry_run: bool,
-    #[arg(long, default_value_t = false)]
+    #[arg(long)]
     pub save_config: bool,
+
+    #[arg(short = 'B', long = "box")]
+    pub perform_box: bool,
 }
