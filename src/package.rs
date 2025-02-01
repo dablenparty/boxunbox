@@ -1,6 +1,7 @@
 use std::{
     fs, io,
     path::{Path, PathBuf},
+    sync::LazyLock,
 };
 
 use anyhow::Context;
@@ -33,6 +34,15 @@ fn __target_default() -> PathBuf {
     BASE_DIRS.home_dir().to_path_buf()
 }
 
+/// Utility function returning the default value for [`PackageConfig::ignore_pats`], which is a
+/// Regex for the `.unboxrc.ron` file.
+fn __ignore_pats_default() -> Vec<Regex> {
+    static RC_REGEX: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new("\\.unboxrc(\\.ron)?$").unwrap());
+
+    vec![RC_REGEX.clone()]
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PackageConfig {
     #[serde(skip)]
@@ -42,7 +52,7 @@ pub struct PackageConfig {
 
     #[serde(default = "__target_default", deserialize_with = "__de_pathbuf")]
     pub target: PathBuf,
-    #[serde(with = "serde_regex")]
+    #[serde(default = "__ignore_pats_default", with = "serde_regex")]
     pub ignore_pats: Vec<Regex>,
 }
 
@@ -53,10 +63,15 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
         let BoxUnboxCli {
             package,
             target,
-            ignore_pats,
+            ignore_pats: cli_ignore_pats,
             dry_run,
             ..
         } = value;
+
+        // prepend default ignore pattern(s)
+        let mut ignore_pats = __ignore_pats_default();
+        ignore_pats.extend(cli_ignore_pats);
+
         let conf = Self {
             package: package.canonicalize()?,
             target: target.unwrap_or_else(__target_default).canonicalize()?,
@@ -74,7 +89,7 @@ impl PackageConfig {
         ".unboxrc.ron"
     }
 
-    /// Merge with [`BoxUnboxCli`] args. Consumes both this struct and the `cli` args.
+    /// Merge with [`BoxUnboxCli`] args. Consumes this struct.
     ///
     /// # Arguments
     ///
@@ -85,7 +100,13 @@ impl PackageConfig {
 
         let conf = Self {
             package: self.package,
-            target: cli.target.clone().unwrap_or(self.target).canonicalize()?,
+            target: cli.target.clone().map_or(Ok(self.target), |p| {
+                if p.is_relative() {
+                    p.canonicalize()
+                } else {
+                    Ok(p)
+                }
+            })?,
             dry_run: cli.dry_run,
             ignore_pats,
         };

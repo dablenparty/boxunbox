@@ -1,4 +1,7 @@
 PackageConfig(
     target: "~/Documents/boxunbox/demo/dest",
-    ignore_pats: ["^test_ignore.*$"],
+    ignore_pats: [
+        "\\.unboxrc(\\.ron)?$",
+        "^test_ignore.*$"
+    ],
 )

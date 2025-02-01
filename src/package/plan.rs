@@ -1,11 +1,9 @@
 use std::{
-    fs, iter,
+    fs,
     path::{Path, PathBuf},
-    sync::LazyLock,
 };
 
 use anyhow::Context;
-use regex::Regex;
 
 use crate::{
     package::{errors::ParseError, PackageConfig},
@@ -42,8 +40,6 @@ impl UnboxPlan {
         root_package: P,
         root_config: PackageConfig,
     ) -> Result<Self, UnboxError> {
-        static RC_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new("\\.unboxrc").unwrap());
-
         let root_package = root_package.as_ref().to_path_buf();
 
         match root_package.try_exists() {
@@ -120,7 +116,6 @@ impl UnboxPlan {
             if config_stack
                 .iter()
                 .flat_map(|conf| conf.ignore_pats.as_slice())
-                .chain(iter::once(&*RC_REGEX))
                 .any(|re| re.is_match(&file_name))
             {
                 #[cfg(debug_assertions)]
