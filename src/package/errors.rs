@@ -18,6 +18,8 @@ pub enum UnboxError {
     AnyhowError(#[from] anyhow::Error),
     #[error("package doesn't exist: {0}")]
     PackageNotFound(PathBuf),
+    #[error("missing write permissions for '{0}'")]
+    NoWritePermissions(PathBuf),
     #[error("{0}")]
     ConfigParseError(#[from] ParseError),
     #[error("failed to unbox {package_entry} -> {target_entry}, destination already exists")]

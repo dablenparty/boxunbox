@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fs,
     path::{Path, PathBuf},
 };
@@ -157,22 +158,56 @@ impl UnboxPlan {
     ///
     /// # Errors
     ///
-    /// An error is retured if a target link already exists.
+    /// An error is retured if a target link already exists or if a directory already exists and
+    /// the running user doesn't have read/write permissions.
     pub fn check_plan(&self) -> Result<(), UnboxError> {
-        // TODO: validate file permissions
-        self.links.iter().try_for_each(|(src, dest)| {
+        #[cfg(unix)]
+        fn file_is_writeable<P: AsRef<Path>>(file: P) -> bool {
+            use std::os::unix::fs::MetadataExt;
+
+            // read/write access, per docs:
+            // https://doc.rust-lang.org/std/os/unix/fs/trait.MetadataExt.html#tymethod.mode
+            file.as_ref()
+                .metadata()
+                .is_ok_and(|meta| (meta.mode() & 0o600) != 0)
+        }
+
+        // verify dirs as you go along the files to avoid having to iterate self.dirs
+        let mut verified_dirs = HashSet::with_capacity(self.dirs.capacity());
+
+        for (src, dest) in &self.links {
             if dest
                 .try_exists()
                 .with_context(|| format!("failed to verify existence of {dest:?}"))?
             {
-                Err(UnboxError::TargetAlreadyExists {
+                return Err(UnboxError::TargetAlreadyExists {
                     package_entry: src.clone(),
                     target_entry: dest.clone(),
-                })
-            } else {
-                Ok(())
+                });
             }
-        })
+
+            let parent = dest
+                .parent()
+                .map_or_else(|| PathBuf::from("/"), Path::to_path_buf);
+
+            // if the dir is already verified or doesn't exist, just continue
+            if verified_dirs.contains(&parent)
+                || !parent
+                    .try_exists()
+                    .with_context(|| format!("failed to verify existence of {parent:?}"))?
+            {
+                continue;
+            }
+
+            // otherwise, the dir exists, so check if it's writeable
+            if file_is_writeable(&parent) {
+                verified_dirs.insert(parent);
+            } else {
+                return Err(UnboxError::NoWritePermissions(parent.clone()));
+            }
+        }
+
+        Ok(())
     }
 
     /// Execute this [`UnboxPlan`]. You may want to call [`UnboxPlan::check_plan`] before this.
