@@ -38,7 +38,6 @@ pub struct BoxUnboxCli {
 
     /// Box a package back up by removing all target symlinks. Works for partially unboxed
     /// packages.
-    /// TODO: implement this flag
     #[arg(short = 'B', long = "box")]
     pub perform_box: bool,
 }

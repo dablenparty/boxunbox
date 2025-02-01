@@ -78,7 +78,6 @@ impl UnboxPlan {
 
         // plan your moves first before doing anything in case something fails; don't want to get
         // halfway done unboxing just to realize you have to box it all back up!
-        // TODO: rollback plans on error (consider a plan struct)
         let mut planned_links = Vec::new();
         let mut planned_dirs = Vec::new();
 
