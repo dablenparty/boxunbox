@@ -250,13 +250,24 @@ impl UnboxPlan {
         Ok(())
     }
 
+    /// Rollback this [`UnboxPlan`] by iterating over the planned links and removing their
+    /// destinations, if they exist and are symlinks.
+    ///
+    /// # Errors
+    ///
+    /// An error may occur while checking existence, reading metadata, or removing the symlink.
     pub fn rollback(&self) -> anyhow::Result<()> {
         self.links.iter().try_for_each(|(_, dest)| {
             if dest
                 .try_exists()
                 .with_context(|| format!("failed to check existence of {dest:?}"))?
+                && dest
+                    .symlink_metadata()
+                    .with_context(|| format!("failed to read metadata of {dest:?}"))?
+                    .is_symlink()
             {
-                fs::remove_file(dest).with_context(|| format!("failed to remove file {dest:?}"))?;
+                fs::remove_file(dest)
+                    .with_context(|| format!("failed to remove symlink {dest:?}"))?;
             }
 
             Ok(())
