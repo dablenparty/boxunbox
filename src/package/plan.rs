@@ -160,6 +160,7 @@ impl UnboxPlan {
     ///
     /// An error is retured if a target link already exists.
     pub fn check_plan(&self) -> Result<(), UnboxError> {
+        // TODO: validate file permissions
         self.links.iter().try_for_each(|(src, dest)| {
             if dest
                 .try_exists()
