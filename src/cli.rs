@@ -16,8 +16,9 @@ fn cli_parse_pathbuf(s: &str) -> Result<PathBuf, String> {
     expand_into_pathbuf(s).map_err(|err| err.to_string())
 }
 
-/// TODO: main documentation.
+/// boxunbox (or just unbox) is a symlinker inspired by GNU stow.
 #[derive(Debug, Parser)]
+#[command(about, long_about = None, version)]
 pub struct BoxUnboxCli {
     /// Package (directory) to unbox.
     #[arg(required = true, value_parser = cli_parse_pathbuf, value_hint = ValueHint::DirPath)]
