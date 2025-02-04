@@ -247,6 +247,17 @@ impl UnboxPlan {
                     })
             })?;
             links.iter().try_for_each(|(src, dest)| {
+                let src = if self.config.use_relative_links {
+                    // use the parent because the diff algo doesn't do file check
+                    &pathdiff::diff_paths(
+                        src,
+                        dest.parent()
+                            .with_context(|| format!("expected file path, got {dest:?}"))?,
+                    )
+                    .with_context(|| format!("failed to diff paths:\n{src:?}\n{dest:?}"))?
+                } else {
+                    src
+                };
                 os_symlink(src, dest)
                     .with_context(|| format!("failed to symlink {src:?} -> {dest:?}"))
             })?;
