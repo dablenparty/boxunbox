@@ -43,6 +43,10 @@ fn __ignore_pats_default() -> Vec<Regex> {
     vec![RC_REGEX.clone()]
 }
 
+const fn __use_relative_links_default() -> bool {
+    false
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PackageConfig {
     #[serde(skip)]
@@ -54,6 +58,7 @@ pub struct PackageConfig {
     pub target: PathBuf,
     #[serde(default = "__ignore_pats_default", with = "serde_regex")]
     pub ignore_pats: Vec<Regex>,
+    #[serde(default = "__use_relative_links_default")]
     pub use_relative_links: bool,
 }
 
