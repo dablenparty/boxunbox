@@ -19,6 +19,7 @@ fn cli_parse_pathbuf(s: &str) -> Result<PathBuf, String> {
 /// boxunbox (or just unbox) is a symlinker inspired by GNU stow.
 #[derive(Debug, Parser)]
 #[command(about, long_about = None, version)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct BoxUnboxCli {
     /// Package (directory) to unbox.
     #[arg(required = true, value_parser = cli_parse_pathbuf, value_hint = ValueHint::DirPath)]
@@ -29,6 +30,9 @@ pub struct BoxUnboxCli {
     /// Ignore file names via regex. May be specified multiple times.
     #[arg(short, long = "ignore")]
     pub ignore_pats: Vec<Regex>,
+    /// Create relative links instead of absolute links.
+    #[arg(short = 'r', long)]
+    pub use_relative_links: bool,
 
     /// Dry run; show the unboxing plan, but do not execute it.
     #[arg(long)]

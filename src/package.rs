@@ -54,6 +54,7 @@ pub struct PackageConfig {
     pub target: PathBuf,
     #[serde(default = "__ignore_pats_default", with = "serde_regex")]
     pub ignore_pats: Vec<Regex>,
+    pub use_relative_links: bool,
 }
 
 impl TryFrom<BoxUnboxCli> for PackageConfig {
@@ -65,6 +66,7 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
             target,
             ignore_pats: cli_ignore_pats,
             dry_run,
+            use_relative_links,
             ..
         } = value;
 
@@ -77,6 +79,7 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
             target: target.unwrap_or_else(__target_default).canonicalize()?,
             ignore_pats,
             dry_run,
+            use_relative_links,
         };
         Ok(conf)
     }
@@ -109,6 +112,7 @@ impl PackageConfig {
             })?,
             dry_run: cli.dry_run,
             ignore_pats,
+            use_relative_links: self.use_relative_links || cli.use_relative_links,
         };
 
         Ok(conf)
