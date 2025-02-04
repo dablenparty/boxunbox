@@ -20,28 +20,11 @@ pub struct UnboxPlan {
     config: PackageConfig,
 }
 
-impl UnboxPlan {
-    /// Generate an [`UnboxPlan`] from a given `root_package`. This is quite involved. First,
-    /// it checks that `root_package` exists. It then iterates over the directory contents,
-    /// planning which directories to create and which files to symlink based on the ignore
-    /// patterns.
-    ///
-    /// # Arguments
-    ///
-    /// - `root_package` - Root package to plan the unboxing from.
-    ///
-    /// # Errors
-    ///
-    /// An error is returned if:
-    ///
-    /// - `root_package` is not found/readable
-    /// - Any [`PackageConfig`]'s fail to parse.
-    /// - Any package sub-dirs or files cannot be read.
-    pub fn try_from_package<P: AsRef<Path>>(
-        root_package: P,
-        root_config: PackageConfig,
-    ) -> Result<Self, UnboxError> {
-        let root_package = root_package.as_ref().to_path_buf();
+impl TryFrom<PackageConfig> for UnboxPlan {
+    type Error = UnboxError;
+
+    fn try_from(root_config: PackageConfig) -> Result<Self, Self::Error> {
+        let root_package = root_config.package.clone();
 
         match root_package.try_exists() {
             Ok(true) => {}
@@ -150,6 +133,28 @@ impl UnboxPlan {
             config: root_config,
         };
         Ok(plan)
+    }
+}
+
+impl UnboxPlan {
+    /// Generate an [`UnboxPlan`] from a given `root_package`. This is quite involved. First,
+    /// it checks that `root_package` exists. It then iterates over the directory contents,
+    /// planning which directories to create and which files to symlink based on the ignore
+    /// patterns.
+    ///
+    /// # Arguments
+    ///
+    /// - `root_package` - Root package to plan the unboxing from.
+    ///
+    /// # Errors
+    ///
+    /// An error is returned if:
+    ///
+    /// - `root_package` is not found/readable
+    /// - Any [`PackageConfig`]'s fail to parse.
+    /// - Any package sub-dirs or files cannot be read.
+    pub fn new(root_config: PackageConfig) -> Result<Self, UnboxError> {
+        Self::try_from(root_config)
     }
 
     /// Check if this [`UnboxPlan`] can be executed. Note that this does not guarantee that an

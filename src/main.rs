@@ -60,8 +60,7 @@ fn main() -> anyhow::Result<()> {
     #[cfg(debug_assertions)]
     println!("pkg_config={pkg_config:#?}");
 
-    let unbox_plan = UnboxPlan::try_from_package(&package, pkg_config)
-        .context("failed to create unboxing plan")?;
+    let unbox_plan = UnboxPlan::new(pkg_config).context("failed to plan unboxing")?;
 
     if do_box {
         unbox_plan.rollback().context("failed to box up package")
