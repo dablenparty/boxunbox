@@ -102,7 +102,7 @@ impl TryFrom<PackageConfig> for UnboxPlan {
                 .any(|re| re.is_match(&file_name))
             {
                 #[cfg(debug_assertions)]
-                println!("ignoring file {path:?}");
+                println!("ignoring file {path:?} (ignore pattern)");
 
                 continue;
             }
@@ -193,17 +193,8 @@ impl UnboxPlan {
         // verify dirs as you go along the files to avoid having to iterate self.dirs
         let mut verified_dirs = HashSet::with_capacity(self.dirs.capacity());
 
-        for (src, dest) in &self.links {
-            if dest
-                .try_exists()
-                .with_context(|| format!("failed to verify existence of {dest:?}"))?
-            {
-                return Err(UnboxError::TargetAlreadyExists {
-                    package_entry: src.clone(),
-                    target_entry: dest.clone(),
-                });
-            }
-
+        for (_, dest) in &self.links {
+            // check if the running user can write to the parent directory
             let parent = dest
                 .parent()
                 .map_or_else(|| PathBuf::from("/"), Path::to_path_buf);
@@ -259,9 +250,25 @@ impl UnboxPlan {
                         }
                     })
             })?;
+
             links.iter().try_for_each(|(src, dest)| {
+                if !config.ignore_exists
+                    && dest
+                        .try_exists()
+                        .with_context(|| format!("failed to verify existence of {dest:?}"))?
+                {
+                    // If new_target exists, don't plan it; however, only return an error if they're
+                    // not ignored.
+                    // if exists errors aren't ignored and the target exists, return the error
+                    return Err(UnboxError::TargetAlreadyExists {
+                        package_entry: src.clone(),
+                        target_entry: dest.clone(),
+                    });
+                }
+
                 os_symlink(src, dest)
                     .with_context(|| format!("failed to symlink {src:?} -> {dest:?}"))
+                    .map_err(UnboxError::from)
             })?;
         }
 
@@ -275,6 +282,11 @@ impl UnboxPlan {
     ///
     /// An error may occur while checking existence, reading metadata, or removing the symlink.
     pub fn rollback(&self) -> anyhow::Result<()> {
+        if self.config.dry_run {
+            println!("ready to box: {self:#?}");
+            return Ok(());
+        }
+
         self.links.iter().try_for_each(|(_, dest)| {
             if dest
                 .try_exists()

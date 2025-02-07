@@ -27,6 +27,9 @@ pub struct BoxUnboxCli {
     /// Directory to unbox PACKAGE to. [default: ~]
     #[arg(short, long, value_parser = cli_parse_pathbuf, value_hint = ValueHint::DirPath)]
     pub target: Option<PathBuf>,
+    /// Ignore "target exists" errors.
+    #[arg(short = 'e', long)]
+    pub ignore_exists: bool,
     /// Ignore file names via regex. May be specified multiple times.
     #[arg(short, long = "ignore")]
     pub ignore_pats: Vec<Regex>,

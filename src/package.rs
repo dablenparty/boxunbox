@@ -53,6 +53,8 @@ pub struct PackageConfig {
     pub package: PathBuf,
     #[serde(skip)]
     pub dry_run: bool,
+    #[serde(skip)]
+    pub ignore_exists: bool,
 
     #[serde(default = "__target_default", deserialize_with = "__de_pathbuf")]
     pub target: PathBuf,
@@ -69,6 +71,7 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
         let BoxUnboxCli {
             package,
             target,
+            ignore_exists,
             ignore_pats: cli_ignore_pats,
             dry_run,
             use_relative_links,
@@ -82,10 +85,12 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
         let conf = Self {
             package: package.canonicalize()?,
             target: target.unwrap_or_else(__target_default).canonicalize()?,
+            ignore_exists,
             ignore_pats,
             dry_run,
             use_relative_links,
         };
+
         Ok(conf)
     }
 }
@@ -116,6 +121,7 @@ impl PackageConfig {
                 }
             })?,
             dry_run: cli.dry_run,
+            ignore_exists: cli.ignore_exists,
             ignore_pats,
             use_relative_links: self.use_relative_links || cli.use_relative_links,
         };
