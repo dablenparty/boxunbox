@@ -37,10 +37,15 @@ fn __target_default() -> PathBuf {
 /// Utility function returning the default value for [`PackageConfig::ignore_pats`], which is a
 /// Regex for the `.unboxrc.ron` file.
 fn __ignore_pats_default() -> Vec<Regex> {
-    static RC_REGEX: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new("\\.unboxrc(\\.ron)?$").unwrap());
+    static DEFAULT_REGEX_VEC: LazyLock<Vec<Regex>> = LazyLock::new(|| {
+        vec![
+            Regex::new("\\.unboxrc(\\.ron)?$").unwrap(),
+            Regex::new("^\\.git.*$").unwrap(),
+            Regex::new("^(README|LICEN[CS]E|COPYING).*$").unwrap(),
+        ]
+    });
 
-    vec![RC_REGEX.clone()]
+    DEFAULT_REGEX_VEC.clone()
 }
 
 const fn __use_relative_links_default() -> bool {

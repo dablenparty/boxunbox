@@ -2,6 +2,9 @@ PackageConfig(
     target: "~/Documents/boxunbox/demo/dest",
     ignore_pats: [
         "\\.unboxrc(\\.ron)?$",
-        "^test_ignore.*$"
+        "^\\.git.*$",
+        "^(README|LICEN[CS]E|COPYING).*$",
+        "^test_ignore.*$",
     ],
+    use_relative_links: false,
 )
