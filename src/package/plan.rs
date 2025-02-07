@@ -108,7 +108,10 @@ impl TryFrom<PackageConfig> for UnboxPlan {
             }
 
             let PackageConfig {
-                package, target, ..
+                package,
+                target,
+                use_relative_links,
+                ..
             } = last_config;
 
             // /path/to/package/entry -> /entry
@@ -119,6 +122,16 @@ impl TryFrom<PackageConfig> for UnboxPlan {
             });
             // /entry -> /path/to/target/entry
             let new_target = target.join(stripped);
+
+            let new_target = if use_relative_links {
+                let target_parent = new_target.parent().unwrap_or(&new_target);
+                pathdiff::diff_paths(&path, target_parent).ok_or(UnboxError::PathDiffError {
+                    path: path.clone(),
+                    base: target_parent.to_path_buf(),
+                })?
+            } else {
+                new_target
+            };
 
             if path_is_dir {
                 planned_dirs.push(new_target);
@@ -247,17 +260,6 @@ impl UnboxPlan {
                     })
             })?;
             links.iter().try_for_each(|(src, dest)| {
-                let src = if self.config.use_relative_links {
-                    // use the parent because the diff algo doesn't do file check
-                    &pathdiff::diff_paths(
-                        src,
-                        dest.parent()
-                            .with_context(|| format!("expected file path, got {dest:?}"))?,
-                    )
-                    .with_context(|| format!("failed to diff paths:\n{src:?}\n{dest:?}"))?
-                } else {
-                    src
-                };
                 os_symlink(src, dest)
                     .with_context(|| format!("failed to symlink {src:?} -> {dest:?}"))
             })?;
