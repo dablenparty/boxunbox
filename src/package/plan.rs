@@ -251,18 +251,20 @@ impl UnboxPlan {
             })?;
 
             links.iter().try_for_each(|(src, dest)| {
-                if !config.ignore_exists
-                    && dest
-                        .try_exists()
-                        .with_context(|| format!("failed to verify existence of {dest:?}"))?
+                if dest
+                    .try_exists()
+                    .with_context(|| format!("failed to verify existence of {dest:?}"))?
                 {
                     // If new_target exists, don't plan it; however, only return an error if they're
                     // not ignored.
-                    // if exists errors aren't ignored and the target exists, return the error
-                    return Err(UnboxError::TargetAlreadyExists {
-                        package_entry: src.clone(),
-                        target_entry: dest.clone(),
-                    });
+                    return if config.ignore_exists {
+                        Ok(())
+                    } else {
+                        Err(UnboxError::TargetAlreadyExists {
+                            package_entry: src.clone(),
+                            target_entry: dest.clone(),
+                        })
+                    };
                 }
 
                 os_symlink(src, dest)
