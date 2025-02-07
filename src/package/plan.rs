@@ -239,16 +239,15 @@ impl UnboxPlan {
         } else {
             // make directories first, then link target files
             dirs.iter().try_for_each(|dir| {
-                // use create_dir because they should be in hierarchal order
-                dir.try_exists()
-                    .with_context(|| format!("failed to verify existence of dir {dir:?}"))
-                    .and_then(|exists| {
-                        if exists {
-                            Ok(())
-                        } else {
-                            fs::create_dir(dir).with_context(|| format!("failed to mkdir {dir:?}"))
-                        }
-                    })
+                // use create_dir because they should be in hierarchical order
+                if dir
+                    .try_exists()
+                    .with_context(|| format!("failed to verify existence of dir {dir:?}"))?
+                {
+                    Ok(())
+                } else {
+                    fs::create_dir(dir).with_context(|| format!("failed to mkdir {dir:?}"))
+                }
             })?;
 
             links.iter().try_for_each(|(src, dest)| {
@@ -288,13 +287,11 @@ impl UnboxPlan {
         }
 
         self.links.iter().try_for_each(|(_, dest)| {
+            // existence check is implied by symlink_metadata
             if dest
-                .try_exists()
-                .with_context(|| format!("failed to check existence of {dest:?}"))?
-                && dest
-                    .symlink_metadata()
-                    .with_context(|| format!("failed to read metadata of {dest:?}"))?
-                    .is_symlink()
+                .symlink_metadata()
+                .with_context(|| format!("failed to read metadata of {dest:?}"))?
+                .is_symlink()
             {
                 fs::remove_file(dest)
                     .with_context(|| format!("failed to remove symlink {dest:?}"))?;
