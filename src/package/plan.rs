@@ -53,20 +53,25 @@ impl TryFrom<PackageConfig> for UnboxPlan {
             };
         }
 
-        // essentially guards against errors; if even ONE occurs, abort and return it.
-        let pkg_entry_path_iter = walkdir::WalkDir::new(&root_package)
+        // NOTE: don't use any intermediate methods on the iterator. The iterator is modified later
+        // by a call to `skip_current_dir()` which is a method on the WalkDir iterator only.
+        let mut pkg_entry_path_iter = walkdir::WalkDir::new(&root_package)
             .sort_by_file_name()
-            .into_iter()
-            .skip(1) // skip root package
-            .map(|res| res.map(|ent| ent.path().to_path_buf()));
+            .into_iter();
 
         // plan your moves first before doing anything in case something fails; don't want to get
         // halfway done unboxing just to realize you have to box it all back up!
         let mut planned_links = Vec::new();
         let mut planned_dirs = Vec::new();
 
-        for path in pkg_entry_path_iter {
-            let path = path?;
+        // skip root dir, it's handled separately
+        let _ = pkg_entry_path_iter.next();
+
+        // manual loop condition allows in-loop modification of iterator which is how I achieved
+        // ignoring dirs
+        while let Some(res) = pkg_entry_path_iter.next() {
+            // essentially guards against errors; if even ONE occurs, abort and return it.
+            let path = res?.into_path();
             let path_is_dir = path.is_dir();
 
             let last_config = clone_last_config!();
@@ -101,8 +106,13 @@ impl TryFrom<PackageConfig> for UnboxPlan {
                 .flat_map(|conf| conf.ignore_pats.as_slice())
                 .any(|re| re.is_match(&file_name))
             {
+                if path_is_dir {
+                    // ignores this dir and all children
+                    pkg_entry_path_iter.skip_current_dir();
+                }
+
                 #[cfg(debug_assertions)]
-                println!("ignoring file {path:?} (ignore pattern)");
+                println!("ignoring {path:?} (ignore pattern)");
 
                 continue;
             }
@@ -138,7 +148,7 @@ impl TryFrom<PackageConfig> for UnboxPlan {
             } else {
                 planned_links.push((path, new_target));
             }
-        }
+        } // while let Some(res) = pkg_entry_path_iter.next()
 
         let plan = Self {
             dirs: planned_dirs,
