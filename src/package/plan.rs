@@ -87,12 +87,14 @@ impl TryFrom<PackageConfig> for UnboxPlan {
                 clone_last_config!()
             };
 
-            // read the config of this subdir
-            // if the config exists, add it to the stack; if not, don't care
-            match PackageConfig::try_from_package(&path) {
-                Ok(config) => config_stack.push(config),
-                Err(ParseError::FileNotFound(_)) => {}
-                Err(err) => return Err(err.into()),
+            if path_is_dir {
+                // read the config of this subdir
+                // if the config exists, add it to the stack; if not, don't care
+                match PackageConfig::try_from_package(&path) {
+                    Ok(config) => config_stack.push(config),
+                    Err(ParseError::FileNotFound(_)) => {}
+                    Err(err) => return Err(err.into()),
+                }
             }
 
             let file_name = path
