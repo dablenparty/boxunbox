@@ -237,6 +237,11 @@ impl UnboxPlan {
             // TODO: better dry run output (colors?)
             println!("dry run, not executing");
         } else {
+            if config.create_target {
+                fs::create_dir_all(&config.target)
+                    .with_context(|| format!("failed to create target {:?}", config.target))?;
+            }
+
             // make directories first, then link target files
             dirs.iter().try_for_each(|dir| {
                 // use create_dir because they should be in hierarchical order

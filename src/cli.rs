@@ -43,6 +43,9 @@ pub struct BoxUnboxCli {
     /// Save the current CLI parameters to the config file. WARNING: overwrites the existing file!
     #[arg(long)]
     pub save_config: bool,
+    /// Create the target dir if it doesn't exist.
+    #[arg(long, short)]
+    pub create_target: bool,
 
     /// Box a package back up by removing all target symlinks. Works for partially unboxed
     /// packages.

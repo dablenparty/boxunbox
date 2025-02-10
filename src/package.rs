@@ -53,9 +53,12 @@ const fn __use_relative_links_default() -> bool {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct PackageConfig {
     #[serde(skip)]
     pub package: PathBuf,
+    #[serde(skip)]
+    pub create_target: bool,
     #[serde(skip)]
     pub dry_run: bool,
     #[serde(skip)]
@@ -76,6 +79,7 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
         let BoxUnboxCli {
             package,
             target,
+            create_target,
             ignore_exists,
             ignore_pats: cli_ignore_pats,
             dry_run,
@@ -90,6 +94,7 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
         let conf = Self {
             package: package.canonicalize()?,
             target: target.unwrap_or_else(__target_default).canonicalize()?,
+            create_target,
             ignore_exists,
             ignore_pats,
             dry_run,
@@ -126,6 +131,7 @@ impl PackageConfig {
                 }
             })?,
             dry_run: cli.dry_run,
+            create_target: cli.create_target || self.create_target,
             ignore_exists: cli.ignore_exists,
             ignore_pats,
             use_relative_links: self.use_relative_links || cli.use_relative_links,
