@@ -33,6 +33,9 @@ pub struct BoxUnboxCli {
     /// Ignore file names via regex. May be specified multiple times.
     #[arg(short, long = "ignore")]
     pub ignore_pats: Vec<Regex>,
+    /// Link the package directory directly to the target.
+    #[arg(short, long)]
+    pub link_root: bool,
     /// Create relative links instead of absolute links.
     #[arg(short = 'r', long)]
     pub use_relative_links: bool,

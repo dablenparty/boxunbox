@@ -31,6 +31,14 @@ impl TryFrom<PackageConfig> for UnboxPlan {
             Ok(false) | Err(_) => return Err(UnboxError::PackageNotFound(root_package.clone())),
         }
 
+        if root_config.link_root {
+            return Ok(Self {
+                links: vec![(root_config.package.clone(), root_config.target.clone())],
+                dirs: Vec::new(),
+                config: root_config,
+            });
+        }
+
         // TODO: least links algorithm?
         // At the very least, I want a way to choose between the algorithms
 

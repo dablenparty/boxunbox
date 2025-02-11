@@ -48,10 +48,6 @@ fn __ignore_pats_default() -> Vec<Regex> {
     DEFAULT_REGEX_VEC.clone()
 }
 
-const fn __use_relative_links_default() -> bool {
-    false
-}
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct PackageConfig {
@@ -68,7 +64,9 @@ pub struct PackageConfig {
     pub target: PathBuf,
     #[serde(default = "__ignore_pats_default", with = "serde_regex")]
     pub ignore_pats: Vec<Regex>,
-    #[serde(default = "__use_relative_links_default")]
+    #[serde(default = "bool::default")]
+    pub link_root: bool,
+    #[serde(default = "bool::default")]
     pub use_relative_links: bool,
 }
 
@@ -82,6 +80,7 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
             create_target,
             ignore_exists,
             ignore_pats: cli_ignore_pats,
+            link_root,
             dry_run,
             use_relative_links,
             ..
@@ -97,6 +96,7 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
             create_target,
             ignore_exists,
             ignore_pats,
+            link_root,
             dry_run,
             use_relative_links,
         };
@@ -132,8 +132,9 @@ impl PackageConfig {
             })?,
             dry_run: cli.dry_run,
             create_target: cli.create_target || self.create_target,
-            ignore_exists: cli.ignore_exists,
+            ignore_exists: cli.ignore_exists || self.ignore_exists,
             ignore_pats,
+            link_root: cli.link_root || self.link_root,
             use_relative_links: self.use_relative_links || cli.use_relative_links,
         };
 
