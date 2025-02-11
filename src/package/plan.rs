@@ -316,9 +316,12 @@ impl UnboxPlan {
         self.links.iter().try_for_each(|(_, dest)| {
             // existence check is implied by symlink_metadata
             if dest
-                .symlink_metadata()
-                .with_context(|| format!("failed to read metadata of {dest:?}"))?
-                .is_symlink()
+                .try_exists()
+                .with_context(|| format!("failed to check existence of {dest:?}"))?
+                && dest
+                    .symlink_metadata()
+                    .with_context(|| format!("failed to read metadata of {dest:?}"))?
+                    .is_symlink()
             {
                 fs::remove_file(dest)
                     .with_context(|| format!("failed to remove symlink {dest:?}"))?;
