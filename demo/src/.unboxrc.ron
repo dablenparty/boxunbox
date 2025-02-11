@@ -1,5 +1,5 @@
 PackageConfig(
-    target: "~/Documents/boxunbox/demo/dest",
+    target: "~/Documents/repos/boxunbox/demo/dest",
     ignore_pats: [
         "\\.unboxrc(\\.ron)?$",
         "^\\.git.*$",

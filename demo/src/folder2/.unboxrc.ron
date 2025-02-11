@@ -1,4 +1,4 @@
 PackageConfig(
-    target: "~/Documents/boxunbox/demo/dest/folder2/",
+    target: "~/Documents/repos/boxunbox/demo/dest/folder2/",
     ignore_pats: [".*again.*"],
 )
