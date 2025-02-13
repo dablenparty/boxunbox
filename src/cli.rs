@@ -39,6 +39,10 @@ pub struct BoxUnboxCli {
     /// Create relative links instead of absolute links.
     #[arg(short = 'r', long)]
     pub use_relative_links: bool,
+    /// Do not create directories at target locations. Only applies to strategies that create
+    /// directories.
+    #[arg(long)]
+    pub no_create_dirs: bool,
 
     /// Dry run; show the unboxing plan, but do not execute it.
     #[arg(long)]

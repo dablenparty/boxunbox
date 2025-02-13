@@ -67,6 +67,8 @@ pub struct PackageConfig {
     #[serde(default = "bool::default")]
     pub link_root: bool,
     #[serde(default = "bool::default")]
+    pub no_create_dirs: bool,
+    #[serde(default = "bool::default")]
     pub use_relative_links: bool,
 }
 
@@ -81,6 +83,7 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
             ignore_exists,
             ignore_pats: cli_ignore_pats,
             link_root,
+            no_create_dirs,
             dry_run,
             use_relative_links,
             ..
@@ -97,6 +100,7 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
             ignore_exists,
             ignore_pats,
             link_root,
+            no_create_dirs,
             dry_run,
             use_relative_links,
         };
@@ -135,6 +139,7 @@ impl PackageConfig {
             ignore_exists: cli.ignore_exists || self.ignore_exists,
             ignore_pats,
             link_root: cli.link_root || self.link_root,
+            no_create_dirs: cli.no_create_dirs || self.no_create_dirs,
             use_relative_links: self.use_relative_links || cli.use_relative_links,
         };
 

@@ -154,7 +154,9 @@ impl TryFrom<PackageConfig> for UnboxPlan {
             };
 
             if path_is_dir {
-                planned_dirs.push(new_target);
+                if !root_config.no_create_dirs {
+                    planned_dirs.push(new_target);
+                }
             } else {
                 planned_links.push((path, new_target));
             }
