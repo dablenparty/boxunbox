@@ -23,6 +23,7 @@ pub struct UnboxPlan {
 impl TryFrom<PackageConfig> for UnboxPlan {
     type Error = UnboxError;
 
+    #[allow(clippy::too_many_lines)]
     fn try_from(root_config: PackageConfig) -> Result<Self, Self::Error> {
         let root_package = root_config.package.clone();
 
@@ -84,26 +85,27 @@ impl TryFrom<PackageConfig> for UnboxPlan {
 
             let last_config = clone_last_config!();
 
-            // If we're in a subdir of the last config, keep using it. Otherwise, pop it off the
-            // stack and get the next one.
-            let last_config = if path.starts_with(&last_config.package) {
-                last_config
-            } else {
+            // If we're no longer in a subdir of the last config, pop it off of the stack
+            if !path.starts_with(&last_config.package) {
                 let _ = config_stack
                     .pop()
                     .expect("there should be at least one config in the stack");
-                clone_last_config!()
-            };
+            }
 
+            // If this path is a directory, read its config and push it to the stack.
+            // I went back and forth on whether or no to do this, but I ended up finding use cases
+            // where I needed this feature and, well, _none_ where I didn't. So here it is.
             if path_is_dir {
-                // read the config of this subdir
                 // if the config exists, add it to the stack; if not, don't care
+                // any other error, ERROR!!
                 match PackageConfig::try_from_package(&path) {
                     Ok(config) => config_stack.push(config),
                     Err(ParseError::FileNotFound(_)) => {}
                     Err(err) => return Err(err.into()),
                 }
             }
+
+            let last_config = clone_last_config!();
 
             let file_name = path
                 .file_name()
@@ -131,6 +133,7 @@ impl TryFrom<PackageConfig> for UnboxPlan {
                 package,
                 target,
                 use_relative_links,
+                no_create_dirs,
                 ..
             } = last_config;
 
@@ -154,7 +157,7 @@ impl TryFrom<PackageConfig> for UnboxPlan {
             };
 
             if path_is_dir {
-                if !root_config.no_create_dirs {
+                if !no_create_dirs {
                     planned_dirs.push(new_target);
                 }
             } else {
