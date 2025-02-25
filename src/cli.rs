@@ -47,6 +47,9 @@ pub struct BoxUnboxCli {
     /// Dry run; show the unboxing plan, but do not execute it.
     #[arg(long)]
     pub dry_run: bool,
+    /// Save an OS-specific config insetad of a generic one. Overwrites --save-config.
+    #[arg(short = 'o', long)]
+    pub save_os_config: bool,
     /// Save the current CLI parameters to the config file. WARNING: overwrites the existing file!
     #[arg(long)]
     pub save_config: bool,

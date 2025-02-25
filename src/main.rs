@@ -3,7 +3,7 @@
 use anyhow::Context;
 use clap::Parser;
 use cli::BoxUnboxCli;
-use package::{errors::ParseError, plan::UnboxPlan, PackageConfig};
+use package::{PackageConfig, errors::ParseError, plan::UnboxPlan};
 
 mod cli;
 mod constants;
@@ -22,6 +22,7 @@ fn main() -> anyhow::Result<()> {
         .canonicalize()
         .with_context(|| format!("failed to canonicalize {:?}", &cli.package))?;
     let do_box = cli.perform_box;
+    let save_os_config = cli.save_os_config;
 
     let pkg_config = match PackageConfig::try_from_package(&package) {
         Ok(rc) => {
@@ -29,9 +30,9 @@ fn main() -> anyhow::Result<()> {
             println!("parsed_rc={rc:#?}");
             // TODO: better errors for this function
             let config = rc.merge_with_cli(&cli)?;
-            if cli.save_config {
+            if cli.save_config || save_os_config {
                 println!("saving config...");
-                config.save_to_package(&package)?;
+                config.save_to_package(&package, save_os_config)?;
             }
 
             config
@@ -49,7 +50,7 @@ fn main() -> anyhow::Result<()> {
                 eprintln!("config={config:#?}");
             }
 
-            config.save_to_package(&package)?;
+            config.save_to_package(&package, save_os_config)?;
 
             config
         }

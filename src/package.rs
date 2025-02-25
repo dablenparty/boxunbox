@@ -5,10 +5,11 @@ use std::{
 };
 
 use anyhow::Context;
+use const_format::formatc;
 use errors::{ParseError, WriteError};
 use regex::Regex;
 use ron::ser::PrettyConfig;
-use serde::{de::Error, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de::Error};
 
 use crate::{cli::BoxUnboxCli, constants::BASE_DIRS, utils::expand_into_pathbuf};
 
@@ -116,6 +117,11 @@ impl PackageConfig {
         ".unboxrc.ron"
     }
 
+    /// Expected file name of the OS-specific RC file.
+    const fn __os_rc_file_name() -> &'static str {
+        formatc!(".unboxrc.{}.ron", std::env::consts::OS)
+    }
+
     /// Merge with [`BoxUnboxCli`] args. Consumes this struct.
     ///
     /// # Arguments
@@ -161,11 +167,22 @@ impl PackageConfig {
     /// - Failure to parse RC file with [`ron`].
     pub fn try_from_package<P: AsRef<Path>>(package: P) -> Result<Self, ParseError> {
         let package = package.as_ref();
-        let rc_file = package.join(PackageConfig::__rc_file_name());
+        let default_rc_path = package.join(PackageConfig::__rc_file_name());
+        let os_rc_path = package.join(PackageConfig::__os_rc_file_name());
 
-        if !rc_file.exists() {
-            return Err(ParseError::FileNotFound(rc_file));
-        }
+        // TODO: errors for this
+        let rc_file = if os_rc_path.try_exists().unwrap_or(false) {
+            os_rc_path
+        } else if default_rc_path.try_exists().unwrap_or(false) {
+            default_rc_path
+        } else {
+            // no config found for this package
+            // TODO: rename error
+            return Err(ParseError::FileNotFound(package.to_path_buf()));
+        };
+
+        #[cfg(debug_assertions)]
+        println!("reading config: {rc_file:?}");
 
         let rc_str = fs::read_to_string(&rc_file)
             .with_context(|| format!("failed to read file: {rc_file:?}"))?;
@@ -181,6 +198,7 @@ impl PackageConfig {
     /// # Arguments
     ///
     /// - `package` - Package to save this config to.
+    /// - `use_os` - Save as an OS-specific config. See [`std::env::consts::OS`].
     ///
     /// # Errors
     ///
@@ -188,7 +206,11 @@ impl PackageConfig {
     ///
     /// - This struct fails to serialize into RON.
     /// - The file cannot be created/written to
-    pub fn save_to_package<P: AsRef<Path>>(&self, package: P) -> Result<(), WriteError> {
+    pub fn save_to_package<P: AsRef<Path>>(
+        &self,
+        package: P,
+        use_os: bool,
+    ) -> Result<(), WriteError> {
         let mut clone_self = self.clone();
         let home_dir = BASE_DIRS.home_dir();
 
@@ -197,7 +219,11 @@ impl PackageConfig {
         }
 
         let package = package.as_ref();
-        let rc_file = package.join(PackageConfig::__rc_file_name());
+        let rc_file = if use_os {
+            package.join(PackageConfig::__os_rc_file_name())
+        } else {
+            package.join(PackageConfig::__rc_file_name())
+        };
 
         // TODO: do something if the config already exists, maybe an error?
         // WARN: this overwrites the existing file, be careful!
