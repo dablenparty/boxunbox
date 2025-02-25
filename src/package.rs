@@ -40,9 +40,9 @@ fn __target_default() -> PathBuf {
 fn __ignore_pats_default() -> Vec<Regex> {
     static DEFAULT_REGEX_VEC: LazyLock<Vec<Regex>> = LazyLock::new(|| {
         vec![
-            Regex::new("\\.unboxrc(\\.ron)?$").unwrap(),
-            Regex::new("^\\.git.*$").unwrap(),
-            Regex::new("^(README|LICEN[CS]E|COPYING).*$").unwrap(),
+            Regex::new(r"\.unboxrc.*$").unwrap(),
+            Regex::new(r"^\.git.*$").unwrap(),
+            Regex::new(r"^(README|LICEN[CS]E|COPYING).*$").unwrap(),
         ]
     });
 
