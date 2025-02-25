@@ -177,8 +177,7 @@ impl PackageConfig {
             default_rc_path
         } else {
             // no config found for this package
-            // TODO: rename error
-            return Err(ParseError::FileNotFound(package.to_path_buf()));
+            return Err(ParseError::ConfigNotFound(package.to_path_buf()));
         };
 
         #[cfg(debug_assertions)]
@@ -225,7 +224,6 @@ impl PackageConfig {
             package.join(PackageConfig::__rc_file_name())
         };
 
-        // TODO: do something if the config already exists, maybe an error?
         // WARN: this overwrites the existing file, be careful!
         let ron_str =
             ron::ser::to_string_pretty(&clone_self, PrettyConfig::new().struct_names(true))?;

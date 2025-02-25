@@ -7,7 +7,7 @@ use std::{
 use anyhow::Context;
 
 use crate::{
-    package::{errors::ParseError, PackageConfig},
+    package::{PackageConfig, errors::ParseError},
     utils::os_symlink,
 };
 
@@ -101,7 +101,7 @@ impl TryFrom<PackageConfig> for UnboxPlan {
                 // any other error, ERROR!!
                 match PackageConfig::try_from_package(&path) {
                     Ok(config) => config_stack.push(config),
-                    Err(ParseError::FileNotFound(_)) => {}
+                    Err(ParseError::ConfigNotFound(_)) => {}
                     Err(err) => return Err(err.into()),
                 }
             }
