@@ -85,12 +85,13 @@ impl TryFrom<PackageConfig> for UnboxPlan {
 
             let last_config = clone_last_config!();
 
-            // If we're no longer in a subdir of the last config, pop it off of the stack
-            if !path.starts_with(&last_config.package) {
-                let _ = config_stack
-                    .pop()
-                    .expect("there should be at least one config in the stack");
-            }
+            // This basically says: if we're in a subdir of the last config, keep going;
+            // otherwise, pop the config off the stack, but panic if the stack was
+            // empty.
+            assert!(
+                path.starts_with(&last_config.package) || config_stack.pop().is_some(),
+                "there should be at least one config on the stack"
+            );
 
             // If this path is a directory, read its config and push it to the stack.
             // I went back and forth on whether or no to do this, but I ended up finding use cases
