@@ -17,7 +17,7 @@ fn cli_parse_pathbuf(s: &str) -> Result<PathBuf, String> {
 }
 
 /// boxunbox (or just unbox) is a symlinker inspired by GNU stow.
-#[derive(Debug, Parser)]
+#[derive(Clone, Debug, Parser)]
 #[command(about, long_about = None, version)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct BoxUnboxCli {
