@@ -216,10 +216,24 @@ impl UnboxPlan {
                 .is_ok_and(|meta| (meta.mode() & 0o600) != 0)
         }
 
-        // verify dirs as you go along the files to avoid having to iterate self.dirs
-        let mut verified_dirs = HashSet::with_capacity(self.dirs.capacity());
+        let Self {
+            links,
+            dirs,
+            config,
+        } = self;
 
-        for (_, dest) in &self.links {
+        // if the target dir already exists, but is supposed to be a symlink, ERROR!!
+        if config.link_root && config.target.is_dir() {
+            return Err(UnboxError::TargetAlreadyExists {
+                package_entry: config.package.clone(),
+                target_entry: config.target.clone(),
+            });
+        }
+
+        // verify dirs as you go along the files to avoid having to iterate self.dirs
+        let mut verified_dirs = HashSet::with_capacity(dirs.capacity());
+
+        for (_, dest) in links {
             // check if the running user can write to the parent directory
             let parent = dest
                 .parent()
