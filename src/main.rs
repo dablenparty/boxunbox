@@ -16,31 +16,32 @@ fn main() -> anyhow::Result<()> {
     #[cfg(debug_assertions)]
     println!("cli={cli:#?}");
 
-    let package = cli
-        .package
+    let BoxUnboxCli {
+        ref package,
+        save_config,
+        save_os_config,
+        perform_box,
+        ..
+    } = cli;
+
+    let package = package
         .clone()
         .canonicalize()
-        .with_context(|| format!("failed to canonicalize {:?}", &cli.package))?;
-    let do_box = cli.perform_box;
-    let save_os_config = cli.save_os_config;
+        .with_context(|| format!("failed to canonicalize {package:?}"))?;
 
     let pkg_config = match PackageConfig::try_from_package(&package) {
         Ok(rc) => {
             #[cfg(debug_assertions)]
             println!("parsed_rc={rc:#?}");
             // TODO: better errors for this function
-            let config = rc.merge_with_cli(&cli)?;
-            if cli.save_config || save_os_config {
-                println!("saving config...");
-                config.save_to_package(&package, save_os_config)?;
-            }
 
-            config
+            rc.merge_with_cli(&cli)?
         }
 
         #[allow(unused_variables)]
         Err(ParseError::ConfigNotFound(rc_path)) => {
-            let config = PackageConfig::try_from(cli)?;
+            let config = PackageConfig::try_from(cli.clone())?;
+
             #[cfg(debug_assertions)]
             {
                 eprintln!(
@@ -50,20 +51,23 @@ fn main() -> anyhow::Result<()> {
                 eprintln!("config={config:#?}");
             }
 
-            config.save_to_package(&package, save_os_config)?;
-
             config
         }
 
         Err(err) => return Err(err.into()),
     };
 
+    if save_config || save_os_config {
+        println!("saving config...");
+        pkg_config.save_to_package(&package, save_os_config)?;
+    }
+
     #[cfg(debug_assertions)]
     println!("pkg_config={pkg_config:#?}");
 
     let unbox_plan = UnboxPlan::new(pkg_config).context("failed to plan unboxing")?;
 
-    if do_box {
+    if perform_box {
         unbox_plan.rollback().context("failed to box up package")
     } else {
         unbox_plan.check_plan()?;
