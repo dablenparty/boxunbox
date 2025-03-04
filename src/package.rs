@@ -59,6 +59,8 @@ pub struct PackageConfig {
     #[serde(skip)]
     pub dry_run: bool,
     #[serde(skip)]
+    pub force: bool,
+    #[serde(skip)]
     pub ignore_exists: bool,
 
     #[serde(default = "__target_default", deserialize_with = "__de_pathbuf")]
@@ -86,6 +88,7 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
             link_root,
             no_create_dirs,
             dry_run,
+            force,
             use_relative_links,
             ..
         } = value;
@@ -103,6 +106,7 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
             link_root,
             no_create_dirs,
             dry_run,
+            force,
             use_relative_links,
         };
 
@@ -141,6 +145,7 @@ impl PackageConfig {
                 }
             })?,
             dry_run: cli.dry_run,
+            force: cli.force || self.force,
             create_target: cli.create_target || self.create_target,
             ignore_exists: cli.ignore_exists || self.ignore_exists,
             ignore_pats,

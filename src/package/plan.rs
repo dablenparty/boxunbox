@@ -62,7 +62,7 @@ impl TryFrom<PackageConfig> for UnboxPlan {
             };
         }
 
-        // NOTE: don't use any intermediate methods on the iterator. The iterator is modified later
+        // WARN: don't use any intermediate methods on the iterator. The iterator is modified later
         // by a call to `skip_current_dir()` which is a method on the WalkDir iterator only.
         let mut pkg_entry_path_iter = walkdir::WalkDir::new(&root_package)
             .sort_by_file_name()
@@ -302,14 +302,19 @@ impl UnboxPlan {
                 {
                     // If new_target exists, don't plan it; however, only return an error if they're
                     // not ignored.
-                    return if config.ignore_exists {
-                        Ok(())
+                    if config.force {
+                        fs::remove_file(dest)
+                            .with_context(|| format!("failed to force remove {dest:?}"))?;
                     } else {
-                        Err(UnboxError::TargetAlreadyExists {
-                            package_entry: src.clone(),
-                            target_entry: dest.clone(),
-                        })
-                    };
+                        return if config.ignore_exists {
+                            Ok(())
+                        } else {
+                            Err(UnboxError::TargetAlreadyExists {
+                                package_entry: src.clone(),
+                                target_entry: dest.clone(),
+                            })
+                        };
+                    }
                 }
 
                 os_symlink(src, dest)

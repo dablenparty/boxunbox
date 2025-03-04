@@ -27,9 +27,6 @@ pub struct BoxUnboxCli {
     /// Directory to unbox PACKAGE to. [default: ~]
     #[arg(short, long, value_parser = cli_parse_pathbuf, value_hint = ValueHint::DirPath)]
     pub target: Option<PathBuf>,
-    /// Ignore "target exists" errors.
-    #[arg(short = 'e', long)]
-    pub ignore_exists: bool,
     /// Ignore file names via regex. May be specified multiple times.
     #[arg(short, long = "ignore")]
     pub ignore_pats: Vec<Regex>,
@@ -44,18 +41,24 @@ pub struct BoxUnboxCli {
     #[arg(long)]
     pub no_create_dirs: bool,
 
-    /// Dry run; show the unboxing plan, but do not execute it.
-    #[arg(long)]
-    pub dry_run: bool,
-    /// Save an OS-specific config insetad of a generic one. Overwrites --save-config.
-    #[arg(short = 'o', long)]
-    pub save_os_config: bool,
-    /// Save the current CLI parameters to the config file. WARNING: overwrites the existing file!
-    #[arg(long)]
-    pub save_config: bool,
     /// Create the target dir if it doesn't exist.
     #[arg(long, short)]
     pub create_target: bool,
+    /// Dry run; show the unboxing plan, but do not execute it.
+    #[arg(long)]
+    pub dry_run: bool,
+    /// Force the creation of symlinks. Overwrites existing files.
+    #[arg(short, long)]
+    pub force: bool,
+    /// Ignore "target exists" errors.
+    #[arg(short = 'e', long)]
+    pub ignore_exists: bool,
+    /// Save the current CLI parameters to the config file. WARNING: overwrites the existing file!
+    #[arg(long)]
+    pub save_config: bool,
+    /// Save an OS-specific config insetad of a generic one. Overwrites --save-config.
+    #[arg(short = 'o', long)]
+    pub save_os_config: bool,
 
     /// Box a package back up by removing all target symlinks. Works for partially unboxed
     /// packages.
