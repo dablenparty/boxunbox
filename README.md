@@ -2,12 +2,20 @@
 
 `boxunbox` is a simple symlinker inspired by [GNU `stow`](https://www.gnu.org/software/stow/).
 
-## Why?
+## Comparison to GNU `stow`
 
-`stow` is quite popular and obviously works well for so many people, so why reinvent the wheel?
+In all honesty, I wanted to be able to control where _each individual folder_ got linked and the way `stow` handles the `.stowrc` files isn't very intuitive in my opinion. Therefore, `boxunbox` stores its config files in the packages themselves. For example, `unbox zsh` would use the config _inside_ the `zsh/` folder, not the current working directory like `stow`. This means you can also [nest config files](demo/src/folder2/.unboxrc.ron) and they'll be respected by design.
 
-To be honest, I love `stow`, but I have a couple of bones to pick with it. First, the `.stowrc` files; if I stow a package named `home`, for example, it does not use the config at `home/.stowrc`, it uses whatever is found in the current directory (`./.stowrc`) or a global config, if you have one. This isn't very intuitive in my opinion; therefore, `boxunbox` places its config files (`.unboxrc.ron`) _inside_ the package directories it is unboxing (i.e. "`stow`-ing"). It also allows creating `.unboxrc.ron` files in _any_ sub-directory of your package and having that be treated as the config for that directory and its contents.
+| `boxunbox`                                                            | `stow`                                   |
+| --------------------------------------------------------------------- | ---------------------------------------- |
+| Absolute (default) and relative links                                 | Relative links only                      |
+| Per-package configs                                                   | Per-operation config                     |
+| OS-specific configs                                                   | N/A                                      |
+| Only symlinks files by default, creating directories as needed        | Creates as few symlinks as possible      |
+| Re-creates directory structure in target until nested config is found | Re-creates directory structure in target |
 
-Moving on, I also don't like that `stow` symlinks directories by default. I wrote `boxunbox` to **only symlink files** by default because I had issues where a directory would get linked and then new files would get created in the linked directory, thus polluting the original location. ~Maybe~ In the future, I'll implement `stow`'s least link algorithm, but not today.
+## Configuration
 
-Lastly, `stow` only creates relative symlinks. By default, `boxunbox` creates absolute symlinks with an option for relative links.
+For CLI args, read the output of `unbox --help`. See the [example config](example.unboxrc.ron) for an overview of the config file. Alternatively, you can just view the [package config struct definition](src/package.rs) if you're comfortable with Rust.
+
+Package config files are stored as `.unboxrc.ron` or `.unboxrc.<platform>.ron` for OS-specific configs. See [this doc page](https://doc.rust-lang.org/std/env/consts/constant.OS.html) for a list of possible values for `<platform>`, although the CLI has a flag that can create one for you automatically. OS-specific configs are always preferred when they exist.

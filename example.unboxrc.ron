@@ -1,0 +1,17 @@
+PackageConfig(
+    // Folder to create symlinks in. Supports ~ and $ENVVARS
+    target: "~/path/to/folder",
+    // Ignore files/folders with regex. Pre-populates with these defaults.
+    ignore_pats: [
+        "\\.unboxrc.*$",
+        "^\\.git.*$",
+        "^(README|LICEN[CS]E|COPYING).*$",
+    ],
+    // Link the packages root folder instead of the files.
+    link_root: false,
+    // Do not create directories. Can be useful for a package of packages.
+    no_create_dirs: false,
+    // When a field is missing from the config, it's default is used
+    // Create relative symlinks instead of absolute links.
+    // use_relative_links: false,
+)
