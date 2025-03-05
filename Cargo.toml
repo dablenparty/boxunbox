@@ -2,6 +2,7 @@
 name = "boxunbox"
 version = "0.1.12"
 edition = "2024"
+readme = "README.md"
 
 [[bin]]
 name = "unbox"
