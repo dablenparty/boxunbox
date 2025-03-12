@@ -41,9 +41,6 @@ pub struct BoxUnboxCli {
     #[arg(long)]
     pub no_create_dirs: bool,
 
-    /// Create the target dir if it doesn't exist.
-    #[arg(long, short)]
-    pub create_target: bool,
     /// Dry run; show the unboxing plan, but do not execute it.
     #[arg(long)]
     pub dry_run: bool,

@@ -55,8 +55,6 @@ pub struct PackageConfig {
     #[serde(skip)]
     pub package: PathBuf,
     #[serde(skip)]
-    pub create_target: bool,
-    #[serde(skip)]
     pub dry_run: bool,
     #[serde(skip)]
     pub force: bool,
@@ -82,7 +80,6 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
         let BoxUnboxCli {
             package,
             target,
-            create_target,
             ignore_exists,
             ignore_pats: cli_ignore_pats,
             link_root,
@@ -100,7 +97,6 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
         let conf = Self {
             package: package.canonicalize()?,
             target: target.unwrap_or_else(__target_default).canonicalize()?,
-            create_target,
             ignore_exists,
             ignore_pats,
             link_root,
@@ -146,7 +142,6 @@ impl PackageConfig {
             })?,
             dry_run: cli.dry_run,
             force: cli.force || self.force,
-            create_target: cli.create_target || self.create_target,
             ignore_exists: cli.ignore_exists || self.ignore_exists,
             ignore_pats,
             link_root: cli.link_root || self.link_root,
