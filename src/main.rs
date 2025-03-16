@@ -68,17 +68,13 @@ fn main() -> anyhow::Result<()> {
     let unbox_plan = UnboxPlan::new(pkg_config).context("failed to plan unboxing")?;
 
     if perform_box {
-        unbox_plan.rollback().context("failed to box up package")
+        unbox_plan.box_up().context("failed to box up package")
     } else {
         unbox_plan.check_plan()?;
-        unbox_plan
-            .execute()
-            .context("failed to execute unbox plan")
-            .or_else(|err| {
-                eprintln!("An error occurred while executing the unboxing plan: {err:?}");
-                unbox_plan
-                    .rollback()
-                    .context("failed to rollback unbox plan")
-            })
+        // FIXME: https://github.com/dablenparty/boxunbox/issues/4
+        // "Boxing" greedily removes all planned target links and doesn't care if they were created
+        // by this program or if they already existed. This is destructive and not suitable for
+        // rollback functionality.
+        unbox_plan.execute().context("failed to execute unbox plan")
     }
 }

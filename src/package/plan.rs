@@ -326,13 +326,13 @@ impl UnboxPlan {
         Ok(())
     }
 
-    /// Rollback this [`UnboxPlan`] by iterating over the planned links and removing their
+    /// Box up this [`UnboxPlan`] by iterating over the planned links and removing their
     /// destinations, if they exist and are symlinks.
     ///
     /// # Errors
     ///
     /// An error may occur while checking existence, reading metadata, or removing the symlink.
-    pub fn rollback(&self) -> anyhow::Result<()> {
+    pub fn box_up(&self) -> anyhow::Result<()> {
         if self.config.dry_run {
             println!("ready to box: {self:#?}");
             return Ok(());
