@@ -10,7 +10,20 @@ use std::{
 use anyhow::Context;
 use regex::Regex;
 
-fn expand(s: &str) -> anyhow::Result<PathBuf> {
+/// Convert a `&str` slice into a `PathBuf`, expanding envvars and the leading tilde `~`, if it
+/// is there.
+///
+/// # Arguments
+///
+/// - `s`: String to expand and convert
+///
+/// # Errors
+///
+/// An error is returned if:
+///
+/// - An envvar cannot be expanded
+/// - You don't have a home directory
+pub fn expand(s: &str) -> anyhow::Result<PathBuf> {
     static ENVVAR_REGEX: LazyLock<Regex> = LazyLock::new(|| {
         /*
          * Allowed syntax:
