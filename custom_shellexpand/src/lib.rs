@@ -100,4 +100,27 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_expand_nested_fallback_envvars() -> anyhow::Result<()> {
+        let home = std::env::var("HOME").context("failed to get home dir")?;
+        let expected = PathBuf::from(format!("{home}/some/file"));
+        // braces are important! otherwise, it's ambiguous
+        let actual = expand("${MISSING1:-${MISSING2:-${MISSING3:-$HOME}}}/some/file")?;
+
+        assert_eq!(expected, actual);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_expand_fallback_tilde() -> anyhow::Result<()> {
+        let home = std::env::var("HOME").context("failed to get home dir")?;
+        let expected = PathBuf::from(format!("{home}/some/file"));
+        let actual = expand("${NO_WAY_YOU_HAVE_DEFINED_THIS:-~}/some/file")?;
+
+        assert_eq!(expected, actual);
+
+        Ok(())
+    }
 }
