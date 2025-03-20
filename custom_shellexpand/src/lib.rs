@@ -1,4 +1,5 @@
-use std::{path::PathBuf, sync::LazyLock};
+#![warn(clippy::all, clippy::pedantic)]
+
 use std::{
     collections::VecDeque,
     ffi::OsStr,
@@ -41,8 +42,11 @@ fn expand(s: &str) -> anyhow::Result<PathBuf> {
 
     // TODO: thiserror errors
     let path = PathBuf::from(s);
-    let comp_strs = path.components().map(|c| c.as_os_str()).collect::<Vec<_>>();
-    let mut expanded_comps = Vec::with_capacity(comp_strs.len());
+    let comp_strs = path
+        .components()
+        .map(Component::as_os_str)
+        .collect::<Vec<_>>();
+    let mut expanded_comps = VecDeque::with_capacity(comp_strs.len());
 
     for comp in comp_strs {
         let path = if let Some(captures) = ENVVAR_REGEX.captures(&comp.to_string_lossy()) {
@@ -55,18 +59,23 @@ fn expand(s: &str) -> anyhow::Result<PathBuf> {
             println!("expanding envvar '{envvar:?}'");
 
             let envvar_value = match std::env::var_os(envvar) {
-                Some(value) => value,
+                Some(value) => {
+                    #[cfg(debug_assertions)]
+                    println!("{envvar:?}={value:?}");
+
+                    value
+                }
                 None => {
                     if let Some(fallback) = captures.get(3) {
+                        #[cfg(debug_assertions)]
+                        println!("failed to expand '{envvar:?}', found fallback");
+
                         expand(fallback.as_str())?.into_os_string()
                     } else {
                         anyhow::bail!("failed to get value of var: {envvar:?}")
                     }
                 }
             };
-
-            #[cfg(debug_assertions)]
-            println!("{envvar:?}={envvar_value:?}");
 
             PathBuf::from(envvar_value)
         } else {
