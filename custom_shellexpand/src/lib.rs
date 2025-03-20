@@ -1,4 +1,10 @@
 use std::{path::PathBuf, sync::LazyLock};
+use std::{
+    collections::VecDeque,
+    ffi::OsStr,
+    path::{Component, PathBuf},
+    sync::LazyLock,
+};
 
 use anyhow::Context;
 use regex::Regex;
@@ -47,8 +53,18 @@ fn expand(s: &str) -> anyhow::Result<PathBuf> {
     #[cfg(debug_assertions)]
     println!("comps={expanded_comps:?}");
 
-    // TODO: expand ~
-    Ok(PathBuf::from_iter(expanded_comps.iter()))
+    if let Some(front) = expanded_comps.front() {
+        if front.as_os_str() == OsStr::new("~") {
+            #[cfg(unix)]
+            let home = std::env::var_os("HOME").context("failed to get HOME")?;
+            expanded_comps.pop_front();
+            for comp in PathBuf::from(home).components().rev() {
+                expanded_comps.push_front(comp.as_os_str().to_os_string());
+            }
+        }
+    }
+
+    Ok(PathBuf::from_iter(expanded_comps))
 }
 
 #[cfg(test)]
