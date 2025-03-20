@@ -24,8 +24,19 @@ mod tests {
     #[test]
     fn test_expand_envvar() -> anyhow::Result<()> {
         let home = std::env::var("HOME").context("failed to get home dir")?;
-        let expected = PathBuf::from(format!("/path/to{home}"));
-        let actual = expand("/path/to/$HOME");
+        let expected = PathBuf::from(format!("{home}/some/file"));
+        let actual = expand("$HOME/some/file");
+
+        assert_eq!(expected, actual);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_expand_envvar_with_braces() -> anyhow::Result<()> {
+        let home = std::env::var("HOME").context("failed to get home dir")?;
+        let expected = PathBuf::from(format!("{home}/some/file"));
+        let actual = expand("${HOME}/some/file");
 
         assert_eq!(expected, actual);
 
