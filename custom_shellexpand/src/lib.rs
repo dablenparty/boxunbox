@@ -11,6 +11,31 @@ use regex::Regex;
 
 fn expand(s: &str) -> anyhow::Result<PathBuf> {
     static ENVVAR_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+        /*
+         * Allowed syntax:
+         * Vars must start with a $ and either a letter or underscore. This may be followed by any
+         * amount of letters, numbers, or underscores. I'm not supporting anything else because if
+         * you're doing something else, why? Fallback values may be defined after a `:-` (see
+         * examples 3 & 4).
+         *
+         * Example matches:
+         * 1. $ENV_VAR
+         * 2. ${ENV_VAR}
+         * 3. ${MISSING_VAR:-$ENV_VAR}
+         * 4. ${MISSING_VAR:-~/path/to/file}
+         *
+         * There are three capture groups:
+         * 1. The environment variable (minus the $)
+         *    ([\w_][\w\d_]*)
+         * 2. Everything after (ignore this group)
+         *    (:-(.*)?.)?
+         * 3. The fallback value
+         *    (.*)?
+         *
+         * The extra dot after capture group 3 is required. Without it, group 3 picks up on the
+         * closing brace since it's greedy. The extra dot bypasses that, but the explicit brace is
+         * also required because... idk why. It might not be, but I want it there for brevity.
+         */
         Regex::new(r"\$\{?([\w_][\w\d_]*)(:-(.*)?.)?\}?").expect("invalid envvar regex")
     });
 
