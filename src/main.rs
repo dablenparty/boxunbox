@@ -7,7 +7,6 @@ use package::{PackageConfig, errors::ParseError, plan::UnboxPlan};
 
 mod cli;
 mod constants;
-mod custom_shellexpand;
 mod package;
 mod utils;
 

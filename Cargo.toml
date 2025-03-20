@@ -8,14 +8,22 @@ readme = "README.md"
 name = "unbox"
 path = "src/main.rs"
 
-[dependencies]
+[workspace]
+members = ["custom_shellexpand"]
+
+[workspace.dependencies]
 anyhow = "1.0.96"
+directories-next = "2.0.0"
+regex = "1.11.1"
+
+[dependencies]
+anyhow.workspace = true
 clap = { version = "4.5.31", features = ["derive", "cargo", "unicode"] }
 const_format = { version = "0.2.34", features = ["fmt"] }
-directories-next = "2.0.0"
+directories-next.workspace = true
 path-clean = "1.0.1"
 pathdiff = "0.2.3"
-regex = "1.11.1"
+regex.workspace = true
 ron = "0.8.1"
 serde = { version = "1.0.218", features = ["derive"] }
 serde_regex = "1.1.0"
