@@ -19,8 +19,9 @@ An error is returned if an environment variable cannot be found.
 */
 pub fn expand_into_pathbuf<S: AsRef<str>>(s: S) -> anyhow::Result<PathBuf> {
     let s = s.as_ref();
-    let expanded = shellexpand::full(s).with_context(|| format!("failed to expand {s:?}"))?;
-    let cleaned = path_clean::clean(expanded.as_ref());
+    let expanded =
+        custom_shellexpand::expand(s).with_context(|| format!("failed to expand {s:?}"))?;
+    let cleaned = path_clean::clean(expanded);
     Ok(cleaned)
 }
 
