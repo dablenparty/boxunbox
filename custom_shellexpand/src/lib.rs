@@ -14,6 +14,15 @@ use regex::Regex;
 /// Convert a `&str` slice into a `PathBuf`, expanding envvars and the leading tilde `~`, if it
 /// is there.
 ///
+/// The tilde (`~`) expands into the users home directory as defined by [`directories_next::BaseDirs::home_dir`].
+///
+/// Environment variables expand into their value, optionally expanding a fallback value if the var
+/// cannot be read. Envvars may contain letters, numbers, and underscores (`_`), but they _must_ start
+/// with either a letter or an underscore after the dollar sign (`$`). Although more complicated
+/// syntax is technically allowed by most programming languages, I will not be supporting anything
+/// other than this basic structure because this is what most shells support and if you're doing
+/// something different, ask yourself why.
+///
 /// # Arguments
 ///
 /// - `s`: String to expand and convert
@@ -30,12 +39,7 @@ pub fn expand(s: &str) -> anyhow::Result<PathBuf> {
         LazyLock::new(|| BaseDirs::new().expect("failed to locate users home directory"));
     static ENVVAR_REGEX: LazyLock<Regex> = LazyLock::new(|| {
         /*
-         * Allowed syntax:
-         * Vars must start with a $ and either a letter or underscore. This may be followed by any
-         * amount of letters, numbers, or underscores. I'm not supporting anything else because if
-         * you're doing something else, why? Fallback values may be defined after a `:-` (see
-         * examples 3 & 4).
-         *
+         * TODO: put examples into doctests
          * Example matches:
          * 1. $ENV_VAR
          * 2. ${ENV_VAR}
@@ -46,15 +50,18 @@ pub fn expand(s: &str) -> anyhow::Result<PathBuf> {
          * 1. The environment variable (minus the $)
          *    ([\w_][\w\d_]*)
          * 2. Everything after (ignore this group)
-         *    (:-(.*)?.)?
+         *    (:-(.*)?\})?
          * 3. The fallback value
          *    (.*)?
          *
-         * The extra dot after capture group 3 is required. Without it, group 3 picks up on the
-         * closing brace since it's greedy. The extra dot bypasses that, but the explicit brace is
-         * also required because... idk why. It might not be, but I want it there for brevity.
+         * The extra brace inside capture group 2 is required. Without it, group 3 picks up on the
+         * closing brace since it's greedy and the rule after that should capture the brace (\}?)
+         * is not. This is ok because if capture group 3 is found to exist (i.e. there is a
+         * fallback value), braces are a required part of the syntax. The optional brace rule at
+         * the end is still required, however, to support the cases where there are braces but no
+         * fallback value or no braces at all (see examples above).
          */
-        Regex::new(r"\$\{?([\w_][\w\d_]*)(:-(.*)?.)?\}?").expect("invalid envvar regex")
+        Regex::new(r"\$\{?([a-zA-Z_]\w*)(:-(.*)?\})?\}?").expect("invalid envvar regex")
     });
 
     // TODO: thiserror errors
