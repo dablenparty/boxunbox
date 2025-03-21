@@ -30,3 +30,10 @@ serde = { version = "1.0.218", features = ["derive"] }
 serde_regex = "1.1.0"
 thiserror = "2.0.11"
 walkdir = "2.5.0"
+
+[profile.release]
+opt-level = "z"
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"
