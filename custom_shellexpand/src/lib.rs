@@ -8,6 +8,7 @@ use std::{
 };
 
 use anyhow::Context;
+use directories_next::BaseDirs;
 use regex::Regex;
 
 /// Convert a `&str` slice into a `PathBuf`, expanding envvars and the leading tilde `~`, if it
@@ -24,6 +25,9 @@ use regex::Regex;
 /// - An envvar cannot be expanded
 /// - You don't have a home directory
 pub fn expand(s: &str) -> anyhow::Result<PathBuf> {
+    /// Lazy wrapper around [`directories_next::BaseDirs::new`].
+    static BASE_DIRS: LazyLock<BaseDirs> =
+        LazyLock::new(|| BaseDirs::new().expect("failed to locate users home directory"));
     static ENVVAR_REGEX: LazyLock<Regex> = LazyLock::new(|| {
         /*
          * Allowed syntax:
@@ -102,8 +106,7 @@ pub fn expand(s: &str) -> anyhow::Result<PathBuf> {
 
     if let Some(front) = expanded_comps.front() {
         if front.as_os_str() == OsStr::new("~") {
-            #[cfg(unix)]
-            let home = std::env::var_os("HOME").context("failed to get HOME")?;
+            let home = BASE_DIRS.home_dir();
             expanded_comps.pop_front();
             for comp in PathBuf::from(home).components().rev() {
                 expanded_comps.push_front(comp.as_os_str().to_os_string());
