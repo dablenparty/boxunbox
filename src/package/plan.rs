@@ -1,12 +1,15 @@
 use std::{
     collections::HashSet,
-    fs,
+    fmt, fs,
     path::{Path, PathBuf},
+    sync::LazyLock,
 };
 
 use anyhow::Context;
+use colored::Colorize;
 
 use crate::{
+    constants::BASE_DIRS,
     package::{PackageConfig, errors::ParseError},
     utils::os_symlink,
 };
@@ -18,6 +21,84 @@ pub struct UnboxPlan {
     links: Vec<(PathBuf, PathBuf)>,
     dirs: Vec<PathBuf>,
     config: PackageConfig,
+}
+
+impl fmt::Display for UnboxPlan {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn replace_home_with_tilde<P: AsRef<Path>>(p: P) -> PathBuf {
+            static HOME: LazyLock<PathBuf> = LazyLock::new(|| BASE_DIRS.home_dir().to_path_buf());
+
+            let p = p.as_ref();
+            if let Ok(suffix) = p.strip_prefix(&*HOME) {
+                PathBuf::from("~").join(suffix)
+            } else {
+                p.to_path_buf()
+            }
+        }
+
+        let Self {
+            links,
+            dirs,
+            config,
+        } = self;
+
+        let tilde_package = replace_home_with_tilde(&config.package);
+        let colored_package_string = tilde_package.display().to_string().bright_green();
+        writeln!(f, "Package: {colored_package_string}",)?;
+
+        let tilde_target = replace_home_with_tilde(&config.target);
+        let colored_target_string = tilde_target.display().to_string().bright_red();
+        writeln!(f, "Target: {colored_target_string}")?;
+        writeln!(
+            f,
+            "Create {} in {colored_target_string}",
+            "directories".cyan()
+        )?;
+
+        writeln!(f, "Alright, here's the plan:")?;
+
+        // TODO: icons
+        // TODO: maybe a tree view?
+        for dir in dirs {
+            let path_to_color = format!(
+                "/{}",
+                dir.strip_prefix(&config.target)
+                    .expect("target dir should be prefixed with target but is not")
+                    .display()
+            );
+
+            writeln!(f, " - {}", path_to_color.cyan())?;
+        }
+
+        writeln!(
+            f,
+            "Creating symlinks pointing from {colored_target_string} to {colored_package_string}:"
+        )?;
+
+        for (src, dest) in links {
+            let src_to_color = src
+                .strip_prefix(&config.package)
+                .expect("src file should be prefixed with package but is not")
+                .display()
+                .to_string();
+            let dest_to_color = dest
+                .strip_prefix(&config.target)
+                .expect("dest file should be prefixed with target but is not")
+                .display()
+                .to_string();
+
+            writeln!(
+                f,
+                " - {} -> {}",
+                dest_to_color.bright_red(),
+                src_to_color.bright_green()
+            )?;
+        }
+
+        todo!("make sure this is actually complete");
+
+        Ok(())
+    }
 }
 
 impl TryFrom<PackageConfig> for UnboxPlan {
@@ -271,7 +352,7 @@ impl UnboxPlan {
             config,
         } = self;
 
-        println!("ready to unbox: {self:#?}");
+        println!("{self}");
 
         if config.dry_run {
             // TODO: better dry run output (colors?)
@@ -334,7 +415,7 @@ impl UnboxPlan {
     /// An error may occur while checking existence, reading metadata, or removing the symlink.
     pub fn box_up(&self) -> anyhow::Result<()> {
         if self.config.dry_run {
-            println!("ready to box: {self:#?}");
+            println!("ready to box: {self}");
             return Ok(());
         }
 
