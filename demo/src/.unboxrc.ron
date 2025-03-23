@@ -6,5 +6,7 @@ PackageConfig(
         "^(README|LICEN[CS]E|COPYING).*$",
         "^test_ignore.*$",
     ],
+    link_root: false,
+    no_create_dirs: false,
     use_relative_links: false,
 )
