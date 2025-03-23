@@ -68,7 +68,7 @@ pub struct BoxUnboxCli {
     pub no_create_dirs: bool,
 
     /// Dry run; show the unboxing plan, but do not execute it.
-    #[arg(long)]
+    #[arg(short = 'd', long)]
     pub dry_run: bool,
     /// Force the creation of symlinks. Overwrites existing files.
     #[arg(short, long)]
