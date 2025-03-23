@@ -1,3 +1,27 @@
+## [0.1.18](https://github.com/dablenparty/boxunbox/compare/v0.1.17..v0.1.18) - 2025-03-23
+
+### ⛰️  Features
+
+- *(cli)* Add short -d flag for --dry-run - ([2017172](https://github.com/dablenparty/boxunbox/commit/20171720382cbc735a9c1367f818b8acf586ac9f))
+
+### 🚜 Refactor
+
+- *(cli)* Rename color -> color_override - ([4718cd2](https://github.com/dablenparty/boxunbox/commit/4718cd209e1e08b11a3fdab381c2621c63a7c710))
+
+### 📚 Documentation
+
+- *(CHANGELOG)* Remove massive header - ([4e956bd](https://github.com/dablenparty/boxunbox/commit/4e956bd1f2aa7f0877d98d2665040ad74c01dff9))
+- *(CHANGELOG)* Update CHANGELOG.md - ([72721b2](https://github.com/dablenparty/boxunbox/commit/72721b2902cec76feef9532a477637e26b0d0d49))
+- *(cli)* Repeated documentation - ([fbf4adb](https://github.com/dablenparty/boxunbox/commit/fbf4adb3c1617e1a59562de4e5b95c36202d3a32))
+
+### ⚙️ Miscellaneous Tasks
+
+- Bump version (v0.1.18) - ([1215e5b](https://github.com/dablenparty/boxunbox/commit/1215e5be494f4f07e8996e8571411d722a16ab53))
+
+## New Contributors ❤️
+
+* @dablenparty made their first contribution
+
 ## [0.1.17](https://github.com/dablenparty/boxunbox/compare/v0.1.16..v0.1.17) - 2025-03-23
 
 ### ⛰️  Features
