@@ -18,7 +18,7 @@ fn main() -> anyhow::Result<()> {
     println!("cli={cli:#?}");
 
     let BoxUnboxCli {
-        color: color_override,
+        color_override,
         dry_run,
         ref package,
         save_config,

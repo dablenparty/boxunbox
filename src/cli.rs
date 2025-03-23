@@ -89,5 +89,5 @@ pub struct BoxUnboxCli {
     pub perform_box: bool,
     /// When to show color: 'always', 'auto', or 'never'.
     #[arg(long, default_value_t = ColorOverride::default())]
-    pub color: ColorOverride,
+    pub color_override: ColorOverride,
 }
