@@ -49,13 +49,14 @@ impl fmt::Display for UnboxPlan {
         let tilde_target = replace_home_with_tilde(&config.target);
         let colored_target_string = tilde_target.display().to_string().bright_red();
         writeln!(f, "Target: {colored_target_string}")?;
+
+        writeln!(f, "Alright, here's the plan:")?;
+
         writeln!(
             f,
             "Create {} in {colored_target_string}",
             "directories".cyan()
         )?;
-
-        writeln!(f, "Alright, here's the plan:")?;
 
         // TODO: icons
         // TODO: maybe a tree view?
@@ -94,8 +95,6 @@ impl fmt::Display for UnboxPlan {
                 src_to_color.bright_green()
             )?;
         }
-
-        todo!("make sure this is actually complete");
 
         Ok(())
     }
