@@ -18,6 +18,7 @@ fn main() -> anyhow::Result<()> {
 
     let BoxUnboxCli {
         color: color_override,
+        dry_run,
         ref package,
         save_config,
         save_os_config,
@@ -73,6 +74,12 @@ fn main() -> anyhow::Result<()> {
     println!("pkg_config={pkg_config:#?}");
 
     let unbox_plan = UnboxPlan::new(pkg_config).context("failed to plan unboxing")?;
+
+    println!("{unbox_plan}");
+    if dry_run {
+        println!("dry run, not executing");
+        return Ok(());
+    }
 
     if perform_box {
         unbox_plan.box_up().context("failed to box up package")
