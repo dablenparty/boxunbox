@@ -17,12 +17,19 @@ fn main() -> anyhow::Result<()> {
     println!("cli={cli:#?}");
 
     let BoxUnboxCli {
+        color: color_override,
         ref package,
         save_config,
         save_os_config,
         perform_box,
         ..
     } = cli;
+
+    match color_override {
+        cli::ColorOverride::Always => colored::control::set_override(true),
+        cli::ColorOverride::Auto => colored::control::unset_override(),
+        cli::ColorOverride::Never => colored::control::set_override(false),
+    }
 
     let package = package
         .clone()
