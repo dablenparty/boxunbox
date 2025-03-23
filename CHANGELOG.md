@@ -1,17 +1,39 @@
 [![animation](https://raw.githubusercontent.com/orhun/git-cliff/main/website/static/img/git-cliff-anim.gif)](https://git-cliff.org)
 
-## [unreleased]
+## [0.1.17](https://github.com/dablenparty/boxunbox/compare/v0.1.16..v0.1.17) - 2025-03-23
+
+### ⛰️  Features
+
+- *(cli)* Add --color flag - ([60ddfee](https://github.com/dablenparty/boxunbox/commit/60ddfee884b45ce304da8dc76ca165631458dd92))
+- *(plan)* Pretty output for UnboxPlan - ([eb9e974](https://github.com/dablenparty/boxunbox/commit/eb9e97479c23edb6ca49f38fbdcb88aaac2e0821))
+- Create CHANGELOG.md with git-cliff - ([9998bd2](https://github.com/dablenparty/boxunbox/commit/9998bd23e4df6f74c87c55e2fa025afaab8738bb))
+
+### 🐛 Bug Fixes
+
+- *(plan)* Output now reflects config options - ([e41d676](https://github.com/dablenparty/boxunbox/commit/e41d676b6b843201a12fc3fd9365a6291d2b8643))
+- *(plan)* Remove completed todo - ([d42f6e9](https://github.com/dablenparty/boxunbox/commit/d42f6e9677d8f638ba50d2e8cc2da0d95570de00))
 
 ### 🚜 Refactor
 
+- *(package)* Add output when saving config - ([e554189](https://github.com/dablenparty/boxunbox/commit/e5541893e7604feb61ef62ec85b066a2860b90cf))
+- *(package)* Remove unused field - ([550de51](https://github.com/dablenparty/boxunbox/commit/550de51c1d72376a948acffbc298059d9482be35))
 - *(shellexpand)* Use directories_next for getting user HOME - ([18f73de](https://github.com/dablenparty/boxunbox/commit/18f73decf9de8dd9cb456509b98fa6930e476429))
 
 ### 📚 Documentation
 
 - *(shellexpand)* Document envvar syntax on expand function - ([c05816d](https://github.com/dablenparty/boxunbox/commit/c05816d411325cb7694ff53958cb3274094b37f1))
 
+### 🧪 Testing
+
+- *(demo)* Update unbox plan - ([aab3739](https://github.com/dablenparty/boxunbox/commit/aab3739c2d8ccb5fc85514690892061ebea50230))
+
+### ⚙️ Miscellaneous Tasks
+
+- Bump version (v0.1.17) - ([7ced0b5](https://github.com/dablenparty/boxunbox/commit/7ced0b595f563458eb85f58fa78100aafee0d572))
+
 ### Build
 
+- Add colored dependency - ([cf98a64](https://github.com/dablenparty/boxunbox/commit/cf98a64e5d0ee96826cfa183124b0e42276f9706))
 - Optimize release builds for binary size - ([4cfea66](https://github.com/dablenparty/boxunbox/commit/4cfea66c9967d813753b500dd81817b5ee4c540b))
 
 
