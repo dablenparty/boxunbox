@@ -52,49 +52,69 @@ impl fmt::Display for UnboxPlan {
 
         writeln!(f, "Alright, here's the plan:")?;
 
-        writeln!(
-            f,
-            "Create {} in {colored_target_string}",
-            "directories".cyan()
-        )?;
-
-        // TODO: icons
-        // TODO: maybe a tree view?
-        for dir in dirs {
-            let path_to_color = format!(
-                "/{}",
-                dir.strip_prefix(&config.target)
-                    .expect("target dir should be prefixed with target but is not")
-                    .display()
-            );
-
-            writeln!(f, " - {}", path_to_color.cyan())?;
-        }
-
-        writeln!(
-            f,
-            "Creating symlinks pointing from {colored_target_string} to {colored_package_string}:"
-        )?;
-
-        for (src, dest) in links {
-            let src_to_color = src
-                .strip_prefix(&config.package)
-                .expect("src file should be prefixed with package but is not")
-                .display()
-                .to_string();
-            let dest_to_color = dest
-                .strip_prefix(&config.target)
-                .expect("dest file should be prefixed with target but is not")
-                .display()
-                .to_string();
-
+        if !(config.no_create_dirs || config.link_root) {
             writeln!(
                 f,
-                " - {} -> {}",
-                dest_to_color.bright_red(),
-                src_to_color.bright_green()
+                "Create {} in {colored_target_string}",
+                "directories".cyan()
             )?;
+
+            // TODO: icons
+            // TODO: maybe a tree view?
+            for dir in dirs {
+                let path_to_color = format!(
+                    "/{}",
+                    dir.strip_prefix(&config.target)
+                        .expect("target dir should be prefixed with target but is not")
+                        .display()
+                );
+
+                writeln!(f, " - {}", path_to_color.cyan())?;
+            }
         }
+
+        if config.link_root {
+            writeln!(f, "Create one symlink:")?;
+            writeln!(f, "{colored_target_string} -> {colored_package_string}")?;
+        } else {
+            writeln!(
+                f,
+                "Create symlinks pointing from {colored_target_string} to {colored_package_string}:"
+            )?;
+
+            for (src, dest) in links {
+                let src_to_color = src
+                    .strip_prefix(&config.package)
+                    .expect("src file should be prefixed with package but is not")
+                    .display()
+                    .to_string();
+                let dest_to_color = dest
+                    .strip_prefix(&config.target)
+                    .expect("dest file should be prefixed with target but is not")
+                    .display()
+                    .to_string();
+
+                writeln!(
+                    f,
+                    " - {} -> {}",
+                    dest_to_color.bright_red(),
+                    src_to_color.bright_green()
+                )?;
+            }
+        }
+
+        // TODO: update this when target file handling is updated
+        // see: https://github.com/dablenparty/boxunbox/issues/2
+        let target_action = if config.force {
+            writeln!(f, "{}", "--force is enabled!".bright_red())?;
+            "be overwritten!".bright_red()
+        } else if config.ignore_exists {
+            "be ignored.".bright_blue()
+        } else {
+            "cause an error".bright_magenta()
+        };
+
+        writeln!(f, "If a target file exists, it will {target_action}")?;
 
         Ok(())
     }
@@ -353,55 +373,50 @@ impl UnboxPlan {
 
         println!("{self}");
 
-        if config.dry_run {
-            // TODO: better dry run output (colors?)
-            println!("dry run, not executing");
-        } else {
-            if !config.link_root {
-                fs::create_dir_all(&config.target)
-                    .with_context(|| format!("failed to create target {:?}", config.target))?;
+        if !config.link_root {
+            fs::create_dir_all(&config.target)
+                .with_context(|| format!("failed to create target {:?}", config.target))?;
+        }
+
+        // make directories first, then link target files
+        dirs.iter().try_for_each(|dir| {
+            // use create_dir because they should be in hierarchical order
+            if dir
+                .try_exists()
+                .with_context(|| format!("failed to verify existence of dir {dir:?}"))?
+            {
+                Ok(())
+            } else {
+                fs::create_dir(dir).with_context(|| format!("failed to mkdir {dir:?}"))
+            }
+        })?;
+
+        links.iter().try_for_each(|(src, dest)| {
+            if dest
+                .try_exists()
+                .with_context(|| format!("failed to verify existence of {dest:?}"))?
+            {
+                // If new_target exists, don't plan it; however, only return an error if they're
+                // not ignored.
+                if config.force {
+                    fs::remove_file(dest)
+                        .with_context(|| format!("failed to force remove {dest:?}"))?;
+                } else {
+                    return if config.ignore_exists {
+                        Ok(())
+                    } else {
+                        Err(UnboxError::TargetAlreadyExists {
+                            package_entry: src.clone(),
+                            target_entry: dest.clone(),
+                        })
+                    };
+                }
             }
 
-            // make directories first, then link target files
-            dirs.iter().try_for_each(|dir| {
-                // use create_dir because they should be in hierarchical order
-                if dir
-                    .try_exists()
-                    .with_context(|| format!("failed to verify existence of dir {dir:?}"))?
-                {
-                    Ok(())
-                } else {
-                    fs::create_dir(dir).with_context(|| format!("failed to mkdir {dir:?}"))
-                }
-            })?;
-
-            links.iter().try_for_each(|(src, dest)| {
-                if dest
-                    .try_exists()
-                    .with_context(|| format!("failed to verify existence of {dest:?}"))?
-                {
-                    // If new_target exists, don't plan it; however, only return an error if they're
-                    // not ignored.
-                    if config.force {
-                        fs::remove_file(dest)
-                            .with_context(|| format!("failed to force remove {dest:?}"))?;
-                    } else {
-                        return if config.ignore_exists {
-                            Ok(())
-                        } else {
-                            Err(UnboxError::TargetAlreadyExists {
-                                package_entry: src.clone(),
-                                target_entry: dest.clone(),
-                            })
-                        };
-                    }
-                }
-
-                os_symlink(src, dest)
-                    .with_context(|| format!("failed to symlink {src:?} -> {dest:?}"))
-                    .map_err(UnboxError::from)
-            })?;
-        }
+            os_symlink(src, dest)
+                .with_context(|| format!("failed to symlink {src:?} -> {dest:?}"))
+                .map_err(UnboxError::from)
+        })?;
 
         Ok(())
     }
@@ -413,11 +428,6 @@ impl UnboxPlan {
     ///
     /// An error may occur while checking existence, reading metadata, or removing the symlink.
     pub fn box_up(&self) -> anyhow::Result<()> {
-        if self.config.dry_run {
-            println!("ready to box: {self}");
-            return Ok(());
-        }
-
         self.links.iter().try_for_each(|(_, dest)| {
             // existence check is implied by symlink_metadata
             if dest
