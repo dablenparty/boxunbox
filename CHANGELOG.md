@@ -1,5 +1,3 @@
-[![animation](https://raw.githubusercontent.com/orhun/git-cliff/main/website/static/img/git-cliff-anim.gif)](https://git-cliff.org)
-
 ## [0.1.17](https://github.com/dablenparty/boxunbox/compare/v0.1.16..v0.1.17) - 2025-03-23
 
 ### ⛰️  Features
