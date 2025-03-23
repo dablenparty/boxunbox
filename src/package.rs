@@ -55,8 +55,6 @@ pub struct PackageConfig {
     #[serde(skip)]
     pub package: PathBuf,
     #[serde(skip)]
-    pub dry_run: bool,
-    #[serde(skip)]
     pub force: bool,
     #[serde(skip)]
     pub ignore_exists: bool,
@@ -84,7 +82,6 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
             ignore_pats: cli_ignore_pats,
             link_root,
             no_create_dirs,
-            dry_run,
             force,
             use_relative_links,
             ..
@@ -101,7 +98,6 @@ impl TryFrom<BoxUnboxCli> for PackageConfig {
             ignore_pats,
             link_root,
             no_create_dirs,
-            dry_run,
             force,
             use_relative_links,
         };
@@ -140,7 +136,6 @@ impl PackageConfig {
                     Ok(p)
                 }
             })?,
-            dry_run: cli.dry_run,
             force: cli.force || self.force,
             ignore_exists: cli.ignore_exists || self.ignore_exists,
             ignore_pats,
