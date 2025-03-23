@@ -1,6 +1,6 @@
-use std::path::PathBuf;
+use std::{fmt, path::PathBuf};
 
-use clap::{Parser, ValueHint};
+use clap::{Parser, ValueEnum, ValueHint};
 use regex::Regex;
 
 use crate::utils::expand_into_pathbuf;
@@ -14,6 +14,32 @@ Parses a `&str` slice as a [`PathBuf`], expand `~` and environment variables and
 */
 fn cli_parse_pathbuf(s: &str) -> Result<PathBuf, String> {
     expand_into_pathbuf(s).map_err(|err| err.to_string())
+}
+
+/// Override the color setting. Default is [`ColorOverride::Auto`].
+#[derive(Copy, Clone, Debug, ValueEnum)]
+pub enum ColorOverride {
+    Always,
+    Auto,
+    Never,
+}
+
+impl Default for ColorOverride {
+    fn default() -> Self {
+        Self::Auto
+    }
+}
+
+impl fmt::Display for ColorOverride {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            ColorOverride::Always => "always",
+            ColorOverride::Auto => "auto",
+            ColorOverride::Never => "never",
+        };
+
+        write!(f, "{s}")
+    }
 }
 
 /// boxunbox (or just unbox) is a symlinker inspired by GNU stow.
@@ -61,4 +87,7 @@ pub struct BoxUnboxCli {
     /// packages.
     #[arg(short = 'B', long = "box")]
     pub perform_box: bool,
+    /// When to show color: 'always', 'auto', or 'never'.
+    #[arg(long, default_value_t = ColorOverride::default())]
+    pub color: ColorOverride,
 }
