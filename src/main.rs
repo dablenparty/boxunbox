@@ -3,6 +3,7 @@
 use anyhow::Context;
 use clap::Parser;
 use cli::BoxUnboxCli;
+use colored::Colorize;
 use package::{PackageConfig, errors::ParseError, plan::UnboxPlan};
 
 mod cli;
@@ -66,7 +67,14 @@ fn main() -> anyhow::Result<()> {
     };
 
     if save_config || save_os_config {
-        println!("saving config...");
+        let pkg_str = format!(
+            "{}/",
+            package
+                .file_name()
+                .map(|s| s.to_string_lossy())
+                .expect("package path has no basename")
+        );
+        println!("Saving config for {}", pkg_str.bright_green());
         pkg_config.save_to_package(&package, save_os_config)?;
     }
 

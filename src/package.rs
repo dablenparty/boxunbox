@@ -219,6 +219,9 @@ impl PackageConfig {
             package.join(PackageConfig::__rc_file_name())
         };
 
+        #[cfg(debug_assertions)]
+        println!("saving config to {rc_file:?}");
+
         // WARN: this overwrites the existing file, be careful!
         let ron_str =
             ron::ser::to_string_pretty(&clone_self, PrettyConfig::new().struct_names(true))?;
