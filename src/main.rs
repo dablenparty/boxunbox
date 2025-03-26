@@ -89,6 +89,7 @@ fn main() -> anyhow::Result<()> {
 
     let unbox_plan = UnboxPlan::new(pkg_config).context("failed to plan unboxing")?;
 
+    // lay out the plan!
     println!("{unbox_plan}");
     if dry_run {
         println!("dry run, not executing");
