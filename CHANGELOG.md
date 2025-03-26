@@ -1,3 +1,30 @@
+## [0.1.20](https://github.com/dablenparty/boxunbox/compare/v0.1.19..v0.1.20) - 2025-03-26
+
+### 🐛 Bug Fixes
+
+- *(main)* Remove unused variable - ([54b11db](https://github.com/dablenparty/boxunbox/commit/54b11db00b5d61ac30f4bc30a25b0a490bac9154))
+- *(plan)* UnboxPlan shows different info when performing box - ([72c47ef](https://github.com/dablenparty/boxunbox/commit/72c47ef19a3c5ba11a5f0cb6be917bb52cd3d069))
+
+### 🚜 Refactor
+
+- *(errors)* Remove execessive info from TargetAlreadyExists - ([2d0d7e7](https://github.com/dablenparty/boxunbox/commit/2d0d7e7e9eae9ee9a0dbe0eeeb9f1bb3d8bcc61d))
+- *(package)* Add perform_box to config struct - ([5692570](https://github.com/dablenparty/boxunbox/commit/56925700d7f4fd41547d0f6a835d8f012a52c352))
+- *(plan)* Add error type for failing to verify existence - ([fbe86c4](https://github.com/dablenparty/boxunbox/commit/fbe86c46b1ddcd40824e6ad54d507d541c0c83be))
+- *(plan)* Extract UnboxPlan::execute - ([2c055fb](https://github.com/dablenparty/boxunbox/commit/2c055fb61644bf13706347dbc0ea509d3a165056))
+- *(plan)* Rename execute() -> unbox() - ([3056b4d](https://github.com/dablenparty/boxunbox/commit/3056b4d4bc76f8758b16becd88528f69b2947ee8))
+
+### 🎨 Styling
+
+- *(errors)* Alphabetized error enum - ([76e4191](https://github.com/dablenparty/boxunbox/commit/76e4191020d2a92a172b5fc9d5e40e75ef725d0f))
+
+### ⚙️ Miscellaneous Tasks
+
+- Bump version (v0.1.20) - ([ed1b91c](https://github.com/dablenparty/boxunbox/commit/ed1b91cc495abb27a034b9adf16fad2258eb2fd6))
+
+## New Contributors ❤️
+
+* @dablenparty made their first contribution
+
 ## [0.1.19](https://github.com/dablenparty/boxunbox/compare/v0.1.18..v0.1.19) - 2025-03-26
 
 ### 🐛 Bug Fixes
@@ -21,11 +48,8 @@
 
 ### ⚙️ Miscellaneous Tasks
 
-- Bump version (v0.1.19) - ([798eb45](https://github.com/dablenparty/boxunbox/commit/798eb456b04a9c7621238ed346da961f92e13335))
+- Bump version (v0.1.19) - ([824bbae](https://github.com/dablenparty/boxunbox/commit/824bbaed5488d9ed24eada4ff9f90f2a136f36d1))
 
-## New Contributors ❤️
-
-* @dablenparty made their first contribution
 
 ## [0.1.18](https://github.com/dablenparty/boxunbox/compare/v0.1.17..v0.1.18) - 2025-03-23
 
