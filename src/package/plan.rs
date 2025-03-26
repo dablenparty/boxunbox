@@ -371,8 +371,6 @@ impl UnboxPlan {
             config,
         } = self;
 
-        println!("{self}");
-
         if !config.link_root {
             fs::create_dir_all(&config.target)
                 .with_context(|| format!("failed to create target {:?}", config.target))?;
