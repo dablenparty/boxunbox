@@ -23,7 +23,6 @@ fn main() -> anyhow::Result<()> {
         ref package,
         save_config,
         save_os_config,
-        perform_box,
         ..
     } = cli;
 
