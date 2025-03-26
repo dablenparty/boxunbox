@@ -104,6 +104,6 @@ fn main() -> anyhow::Result<()> {
         // "Boxing" greedily removes all planned target links and doesn't care if they were created
         // by this program or if they already existed. This is destructive and not suitable for
         // rollback functionality.
-        unbox_plan.execute().context("failed to execute unbox plan")
+        unbox_plan.unbox().context("failed to execute unbox plan")
     }
 }

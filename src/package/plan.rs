@@ -368,7 +368,7 @@ impl UnboxPlan {
     /// # Errors
     ///
     /// An error is returned if the directories or symlinks cannot be created.
-    pub fn execute(&self) -> anyhow::Result<()> {
+    pub fn unbox(&self) -> anyhow::Result<()> {
         let Self {
             links,
             dirs,
