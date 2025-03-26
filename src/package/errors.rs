@@ -20,6 +20,8 @@ pub enum UnboxError {
     PackageNotFound(PathBuf),
     #[error("failed to diff paths:\n  path: {path}\n  base: {base}")]
     PathDiffError { path: PathBuf, base: PathBuf },
+    #[error("there's nothing to unbox!")]
+    NothingToUnbox,
     #[error("missing write permissions for '{0}'")]
     NoWritePermissions(PathBuf),
     #[error("{0}")]

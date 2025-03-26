@@ -330,6 +330,10 @@ impl UnboxPlan {
             });
         }
 
+        if links.is_empty() {
+            return Err(UnboxError::NothingToUnbox);
+        }
+
         // verify dirs as you go along the files to avoid having to iterate self.dirs
         let mut verified_dirs = HashSet::with_capacity(dirs.capacity());
 
