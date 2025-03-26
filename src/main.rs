@@ -96,14 +96,5 @@ fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    if perform_box {
-        unbox_plan.box_up().context("failed to box up package")
-    } else {
-        unbox_plan.check_plan()?;
-        // FIXME: https://github.com/dablenparty/boxunbox/issues/4
-        // "Boxing" greedily removes all planned target links and doesn't care if they were created
-        // by this program or if they already existed. This is destructive and not suitable for
-        // rollback functionality.
-        unbox_plan.unbox().context("failed to execute unbox plan")
-    }
+    unbox_plan.execute()
 }

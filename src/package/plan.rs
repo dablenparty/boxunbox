@@ -363,7 +363,30 @@ impl UnboxPlan {
         Ok(())
     }
 
-    /// Execute this [`UnboxPlan`]. You may want to call [`UnboxPlan::check_plan`] before this.
+    /// Execute this [`UnboxPlan`] according to this plans [`PackageConfig::perform_box`].
+    ///
+    /// # Errors
+    ///
+    /// An error is returned if:
+    ///
+    /// - [`UnboxPlan::check_plan`] fails.
+    /// - [`UnboxPlan::box_up`] or [`UnboxPlan::unbox`] fails.
+    pub fn execute(&self) -> anyhow::Result<()> {
+        self.check_plan()?;
+
+        if self.config.perform_box {
+            self.box_up().context("failed to box up package")
+        } else {
+            // FIXME: https://github.com/dablenparty/boxunbox/issues/4
+            // "Boxing" greedily removes all planned target links and doesn't care if they were created
+            // by this program or if they already existed. This is destructive and not suitable for
+            // rollback functionality.
+            self.unbox().context("failed to unbox package")
+        }
+    }
+
+    /// Unbox according to this [`UnboxPlan`]. You may want to call [`UnboxPlan::check_plan`]
+    /// before this.
     ///
     /// # Errors
     ///
