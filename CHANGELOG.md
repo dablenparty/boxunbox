@@ -1,3 +1,32 @@
+## [0.1.19](https://github.com/dablenparty/boxunbox/compare/v0.1.18..v0.1.19) - 2025-03-26
+
+### 🐛 Bug Fixes
+
+- *(cli)* --color flag is back - ([eaf879d](https://github.com/dablenparty/boxunbox/commit/eaf879d24b4ad4ea6d6d50accc564e2e8e5b9c0d))
+- *(plan)* No more double printing plan - ([776ec7f](https://github.com/dablenparty/boxunbox/commit/776ec7f61010174cf87b331a28514ac32a7e54cd))
+- Verify package is a dir - ([6bacc30](https://github.com/dablenparty/boxunbox/commit/6bacc30dc096c32a0601789728bb2afbbcf9d625))
+
+### 🚜 Refactor
+
+- *(plan)* Add check for empty plan - ([6aaed3f](https://github.com/dablenparty/boxunbox/commit/6aaed3ff94e61ca84c64b41bbd3c76b7fddfe048))
+
+### 📚 Documentation
+
+- *(CHANGELOG)* Update CHANGELOG.md - ([40d2fd4](https://github.com/dablenparty/boxunbox/commit/40d2fd45cc8af0549995846e4b2601167e9686f5))
+- Add comment - ([a5cc859](https://github.com/dablenparty/boxunbox/commit/a5cc8594275086b7f5d71edcf1e5c0771c168c16))
+
+### 🎨 Styling
+
+- Update imports - ([dc7462b](https://github.com/dablenparty/boxunbox/commit/dc7462bbef98408859d41c01e9cf7865fb0c0916))
+
+### ⚙️ Miscellaneous Tasks
+
+- Bump version (v0.1.19) - ([798eb45](https://github.com/dablenparty/boxunbox/commit/798eb456b04a9c7621238ed346da961f92e13335))
+
+## New Contributors ❤️
+
+* @dablenparty made their first contribution
+
 ## [0.1.18](https://github.com/dablenparty/boxunbox/compare/v0.1.17..v0.1.18) - 2025-03-23
 
 ### ⛰️  Features
@@ -18,9 +47,6 @@
 
 - Bump version (v0.1.18) - ([1215e5b](https://github.com/dablenparty/boxunbox/commit/1215e5be494f4f07e8996e8571411d722a16ab53))
 
-## New Contributors ❤️
-
-* @dablenparty made their first contribution
 
 ## [0.1.17](https://github.com/dablenparty/boxunbox/compare/v0.1.16..v0.1.17) - 2025-03-23
 
