@@ -16,16 +16,16 @@ pub enum ParseError {
 pub enum UnboxError {
     #[error("{0}")]
     AnyhowError(#[from] anyhow::Error),
-    #[error("package doesn't exist: {0}")]
-    PackageNotFound(PathBuf),
-    #[error("failed to diff paths:\n  path: {path}\n  base: {base}")]
-    PathDiffError { path: PathBuf, base: PathBuf },
+    #[error("{0}")]
+    ConfigParseError(#[from] ParseError),
     #[error("there's nothing to unbox!")]
     NothingToUnbox,
     #[error("missing write permissions for '{0}'")]
     NoWritePermissions(PathBuf),
-    #[error("{0}")]
-    ConfigParseError(#[from] ParseError),
+    #[error("package doesn't exist: {0}")]
+    PackageNotFound(PathBuf),
+    #[error("failed to diff paths:\n  path: {path}\n  base: {base}")]
+    PathDiffError { path: PathBuf, base: PathBuf },
     #[error("{0} already exists")]
     TargetAlreadyExists(PathBuf),
     #[error("failed to iterate package contents: {0}")]
