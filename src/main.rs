@@ -96,5 +96,5 @@ fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    unbox_plan.execute()
+    unbox_plan.execute().context("failed to execute plan")
 }

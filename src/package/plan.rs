@@ -129,7 +129,8 @@ impl TryFrom<PackageConfig> for UnboxPlan {
 
         match root_package.try_exists() {
             Ok(true) => {}
-            Ok(false) | Err(_) => return Err(UnboxError::PackageNotFound(root_package.clone())),
+            Ok(false) => return Err(UnboxError::PackageNotFound(root_package.clone())),
+            Err(err) => return Err(UnboxError::FailedToVerifyExistence(err)),
         }
 
         if root_config.link_root {
@@ -344,7 +345,7 @@ impl UnboxPlan {
             if verified_dirs.contains(&parent)
                 || !parent
                     .try_exists()
-                    .with_context(|| format!("failed to verify existence of {parent:?}"))?
+                    .map_err(UnboxError::FailedToVerifyExistence)?
             {
                 continue;
             }
@@ -368,18 +369,20 @@ impl UnboxPlan {
     ///
     /// - [`UnboxPlan::check_plan`] fails.
     /// - [`UnboxPlan::box_up`] or [`UnboxPlan::unbox`] fails.
-    pub fn execute(&self) -> anyhow::Result<()> {
+    pub fn execute(&self) -> Result<(), UnboxError> {
         self.check_plan()?;
 
         if self.config.perform_box {
-            self.box_up().context("failed to box up package")
+            self.box_up().context("failed to box up package")?;
         } else {
             // FIXME: https://github.com/dablenparty/boxunbox/issues/4
             // "Boxing" greedily removes all planned target links and doesn't care if they were created
             // by this program or if they already existed. This is destructive and not suitable for
             // rollback functionality.
-            self.unbox().context("failed to unbox package")
+            self.unbox().context("failed to unbox package")?;
         }
+
+        Ok(())
     }
 
     /// Unbox according to this [`UnboxPlan`]. You may want to call [`UnboxPlan::check_plan`]
@@ -388,7 +391,7 @@ impl UnboxPlan {
     /// # Errors
     ///
     /// An error is returned if the directories or symlinks cannot be created.
-    pub fn unbox(&self) -> anyhow::Result<()> {
+    pub fn unbox(&self) -> Result<(), UnboxError> {
         let Self {
             links,
             dirs,
@@ -405,7 +408,7 @@ impl UnboxPlan {
             // use create_dir because they should be in hierarchical order
             if dir
                 .try_exists()
-                .with_context(|| format!("failed to verify existence of dir {dir:?}"))?
+                .map_err(UnboxError::FailedToVerifyExistence)?
             {
                 Ok(())
             } else {
@@ -416,7 +419,7 @@ impl UnboxPlan {
         links.iter().try_for_each(|(src, dest)| {
             if dest
                 .try_exists()
-                .with_context(|| format!("failed to verify existence of {dest:?}"))?
+                .map_err(UnboxError::FailedToVerifyExistence)?
             {
                 // If new_target exists, don't plan it; however, only return an error if they're
                 // not ignored.
@@ -446,12 +449,12 @@ impl UnboxPlan {
     /// # Errors
     ///
     /// An error may occur while checking existence, reading metadata, or removing the symlink.
-    pub fn box_up(&self) -> anyhow::Result<()> {
+    pub fn box_up(&self) -> Result<(), UnboxError> {
         self.links.iter().try_for_each(|(_, dest)| {
             // existence check is implied by symlink_metadata
             if dest
                 .try_exists()
-                .with_context(|| format!("failed to check existence of {dest:?}"))?
+                .map_err(UnboxError::FailedToVerifyExistence)?
                 && dest
                     .symlink_metadata()
                     .with_context(|| format!("failed to read metadata of {dest:?}"))?

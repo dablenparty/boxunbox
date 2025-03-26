@@ -18,6 +18,8 @@ pub enum UnboxError {
     AnyhowError(#[from] anyhow::Error),
     #[error("{0}")]
     ConfigParseError(#[from] ParseError),
+    #[error("failed to verify existence: {0}")]
+    FailedToVerifyExistence(#[from] io::Error),
     #[error("there's nothing to unbox!")]
     NothingToUnbox,
     #[error("missing write permissions for '{0}'")]
