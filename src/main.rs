@@ -1,5 +1,6 @@
 #![warn(clippy::all, clippy::pedantic)]
 
+use std::iter::Iterator;
 use anyhow::Context;
 use clap::Parser;
 use cli::BoxUnboxCli;
@@ -37,6 +38,12 @@ fn main() -> anyhow::Result<()> {
         .clone()
         .canonicalize()
         .with_context(|| format!("failed to canonicalize {package:?}"))?;
+
+    anyhow::ensure!(
+        package.is_dir(),
+        "'{}' is not a directory",
+        package.display()
+    );
 
     let pkg_config = match PackageConfig::try_from_package(&package) {
         Ok(rc) => {
