@@ -52,7 +52,7 @@ impl fmt::Display for UnboxPlan {
 
         writeln!(f, "Alright, here's the plan:")?;
 
-        if !(config.no_create_dirs || config.link_root) {
+        if !(config.perform_box || config.no_create_dirs || config.link_root) {
             writeln!(
                 f,
                 "Create {} in {colored_target_string}",
@@ -73,13 +73,19 @@ impl fmt::Display for UnboxPlan {
             }
         }
 
+        let create_verb = if config.perform_box {
+            "Remove"
+        } else {
+            "Create"
+        };
+
         if config.link_root {
-            writeln!(f, "Create one symlink:")?;
+            writeln!(f, "{create_verb} one symlink:")?;
             writeln!(f, "{colored_target_string} -> {colored_package_string}")?;
         } else {
             writeln!(
                 f,
-                "Create symlinks pointing from {colored_target_string} to {colored_package_string}:"
+                "{create_verb} symlinks pointing from {colored_target_string} to {colored_package_string}:"
             )?;
 
             for (src, dest) in links {
@@ -105,16 +111,24 @@ impl fmt::Display for UnboxPlan {
 
         // TODO: update this when target file handling is updated
         // see: https://github.com/dablenparty/boxunbox/issues/2
-        let target_action = if config.force {
-            writeln!(f, "{}", "--force is enabled!".bright_red())?;
-            "be overwritten!".bright_red()
-        } else if config.ignore_exists {
-            "be ignored.".bright_blue()
+        if config.perform_box {
+            writeln!(
+                f,
+                "If a symlink doesn't exist, it will {}",
+                "be ignored".bright_blue()
+            )?;
         } else {
-            "cause an error".bright_magenta()
-        };
+            let target_action = if config.force {
+                writeln!(f, "{}", "--force is enabled!".bright_red())?;
+                "be overwritten!".bright_red()
+            } else if config.ignore_exists {
+                "be ignored.".bright_blue()
+            } else {
+                "cause an error".bright_magenta()
+            };
 
-        writeln!(f, "If a target file exists, it will {target_action}")?;
+            writeln!(f, "If a target file exists, it will {target_action}")?;
+        }
 
         Ok(())
     }
