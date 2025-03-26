@@ -26,11 +26,8 @@ pub enum UnboxError {
     NoWritePermissions(PathBuf),
     #[error("{0}")]
     ConfigParseError(#[from] ParseError),
-    #[error("failed to unbox {package_entry} -> {target_entry}, destination already exists")]
-    TargetAlreadyExists {
-        package_entry: PathBuf,
-        target_entry: PathBuf,
-    },
+    #[error("{0} already exists")]
+    TargetAlreadyExists(PathBuf),
     #[error("failed to iterate package contents: {0}")]
     WalkdirError(#[from] walkdir::Error),
 }

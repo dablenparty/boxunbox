@@ -324,10 +324,7 @@ impl UnboxPlan {
 
         // if the target dir already exists, but is supposed to be a symlink, ERROR!!
         if config.link_root && config.target.is_dir() {
-            return Err(UnboxError::TargetAlreadyExists {
-                package_entry: config.package.clone(),
-                target_entry: config.target.clone(),
-            });
+            return Err(UnboxError::TargetAlreadyExists(config.target.clone()));
         }
 
         if links.is_empty() {
@@ -430,10 +427,7 @@ impl UnboxPlan {
                     return if config.ignore_exists {
                         Ok(())
                     } else {
-                        Err(UnboxError::TargetAlreadyExists {
-                            package_entry: src.clone(),
-                            target_entry: dest.clone(),
-                        })
+                        Err(UnboxError::TargetAlreadyExists(dest.clone()))
                     };
                 }
             }
