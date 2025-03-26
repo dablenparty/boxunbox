@@ -1,9 +1,8 @@
 #![warn(clippy::all, clippy::pedantic)]
 
-use std::iter::Iterator;
 use anyhow::Context;
 use clap::Parser;
-use cli::BoxUnboxCli;
+use cli::{BoxUnboxCli, ColorOverride};
 use colored::Colorize;
 use package::{PackageConfig, errors::ParseError, plan::UnboxPlan};
 
@@ -29,9 +28,9 @@ fn main() -> anyhow::Result<()> {
     } = cli;
 
     match color_override {
-        cli::ColorOverride::Always => colored::control::set_override(true),
-        cli::ColorOverride::Auto => colored::control::unset_override(),
-        cli::ColorOverride::Never => colored::control::set_override(false),
+        ColorOverride::Always => colored::control::set_override(true),
+        ColorOverride::Auto => colored::control::unset_override(),
+        ColorOverride::Never => colored::control::set_override(false),
     }
 
     let package = package
