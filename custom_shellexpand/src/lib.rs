@@ -196,4 +196,16 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_fallback_has_path_components() -> anyhow::Result<()> {
+        let home = std::env::var("HOME").context("failed to get home dir")?;
+        let expected = PathBuf::from(format!("{home}/some/file"));
+
+        let actual = expand("${NO_WAY_YOU_HAVE_DEFINED_THIS:-~/some}/file")?;
+
+        assert_eq!(expected, actual);
+
+        Ok(())
+    }
 }
