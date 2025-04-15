@@ -42,6 +42,8 @@ impl fmt::Display for UnboxPlan {
             config,
         } = self;
 
+        // TODO: rewrite this to account for changed targets (https://github.com/dablenparty/boxunbox/issues/8)
+
         let tilde_package = replace_home_with_tilde(&config.package);
         let colored_package_string = tilde_package.display().to_string().bright_green();
         writeln!(f, "Package: {colored_package_string}",)?;
@@ -53,23 +55,13 @@ impl fmt::Display for UnboxPlan {
         writeln!(f, "Alright, here's the plan:")?;
 
         if !(config.perform_box || config.no_create_dirs || config.link_root) {
-            writeln!(
-                f,
-                "Create {} in {colored_target_string}",
-                "directories".cyan()
-            )?;
+            writeln!(f, "Create {}", "directories".cyan())?;
 
             // TODO: icons
             // TODO: maybe a tree view?
             for dir in dirs {
-                let path_to_color = format!(
-                    "/{}",
-                    dir.strip_prefix(&config.target)
-                        .expect("target dir should be prefixed with target but is not")
-                        .display()
-                );
-
-                writeln!(f, " - {}", path_to_color.cyan())?;
+                let tilde_dir = replace_home_with_tilde(dir);
+                writeln!(f, " - {}", tilde_dir.display().to_string().cyan())?;
             }
         }
 
@@ -83,22 +75,11 @@ impl fmt::Display for UnboxPlan {
             writeln!(f, "{create_verb} one symlink:")?;
             writeln!(f, "{colored_target_string} -> {colored_package_string}")?;
         } else {
-            writeln!(
-                f,
-                "{create_verb} symlinks pointing from {colored_target_string} to {colored_package_string}:"
-            )?;
+            writeln!(f, "{create_verb} symlinks:")?;
 
             for (src, dest) in links {
-                let src_to_color = src
-                    .strip_prefix(&config.package)
-                    .expect("src file should be prefixed with package but is not")
-                    .display()
-                    .to_string();
-                let dest_to_color = dest
-                    .strip_prefix(&config.target)
-                    .expect("dest file should be prefixed with target but is not")
-                    .display()
-                    .to_string();
+                let src_to_color = replace_home_with_tilde(src).display().to_string();
+                let dest_to_color = replace_home_with_tilde(dest).display().to_string();
 
                 writeln!(
                     f,
