@@ -101,24 +101,19 @@ pub fn expand(s: &str) -> anyhow::Result<PathBuf> {
             #[cfg(debug_assertions)]
             println!("expanding envvar '{envvar:?}'");
 
-            let envvar_value = match std::env::var_os(envvar) {
-                Some(value) => {
-                    #[cfg(debug_assertions)]
-                    println!("{envvar:?}={value:?}");
+            let envvar_value = if let Some(value) = std::env::var_os(envvar) {
+                #[cfg(debug_assertions)]
+                println!("{envvar:?}={value:?}");
 
-                    value
-                }
-                None => {
-                    if let Some(fallback) = captures.get(3) {
-                        let fallback = fallback.as_str();
-                        #[cfg(debug_assertions)]
-                        println!("failed to expand '{envvar:?}', found fallback '{fallback:?}'");
+                value
+            } else if let Some(fallback) = captures.get(3) {
+                let fallback = fallback.as_str();
+                #[cfg(debug_assertions)]
+                println!("failed to expand '{envvar:?}', found fallback '{fallback:?}'");
 
-                        expand(fallback)?.into_os_string()
-                    } else {
-                        anyhow::bail!("failed to get value of var: {envvar:?}")
-                    }
-                }
+                expand(fallback)?.into_os_string()
+            } else {
+                anyhow::bail!("failed to get value of var: {envvar:?}")
             };
 
             PathBuf::from(envvar_value)
