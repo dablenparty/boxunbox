@@ -16,17 +16,20 @@ fn __parse_path_components_with_braces(s: &str) -> Vec<OsString> {
     let mut brace_depth: u8 = 0;
     let mut components = Vec::new();
     let mut comp = OsString::new();
+    let mut comp_is_envvar = false;
 
     for c in s.chars() {
         match c {
             std::path::MAIN_SEPARATOR if brace_depth == 0 => {
                 components.push(comp.clone());
                 comp.clear();
+                comp_is_envvar = false;
                 continue;
             }
 
-            '{' => brace_depth = brace_depth.saturating_add(1),
-            '}' => brace_depth = brace_depth.saturating_sub(1),
+            '$' => comp_is_envvar = true,
+            '{' if comp_is_envvar => brace_depth = brace_depth.saturating_add(1),
+            '}' if comp_is_envvar => brace_depth = brace_depth.saturating_sub(1),
 
             _ => {}
         }
@@ -109,7 +112,7 @@ pub fn expand(s: &str) -> anyhow::Result<PathBuf> {
                     if let Some(fallback) = captures.get(3) {
                         let fallback = fallback.as_str();
                         #[cfg(debug_assertions)]
-                        println!("failed to expand '{envvar:?}', found fallback {fallback:?}");
+                        println!("failed to expand '{envvar:?}', found fallback '{fallback:?}'");
 
                         expand(fallback)?.into_os_string()
                     } else {
@@ -151,6 +154,14 @@ mod tests {
     fn test_parses_path_with_braces() {
         let expected = vec!["${within/braces}", "file"];
         let actual = __parse_path_components_with_braces("${within/braces}/file");
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_parses_path_with_braces_but_no_dollar_sign() {
+        let expected = vec!["{within", "braces}", "file"];
+        let actual = __parse_path_components_with_braces("{within/braces}/file");
 
         assert_eq!(expected, actual);
     }
