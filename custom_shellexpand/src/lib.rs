@@ -49,19 +49,11 @@ pub fn expand(s: &str) -> anyhow::Result<PathBuf> {
          * There are three capture groups:
          * 1. The environment variable (minus the $)
          *    ([\w_][\w\d_]*)
-         * 2. Everything after (ignore this group)
-         *    (:-(.*)?\})?
+         * 2. Ignore this group
          * 3. The fallback value
-         *    (.*)?
-         *
-         * The extra brace inside capture group 2 is required. Without it, group 3 picks up on the
-         * closing brace since it's greedy and the rule after that should capture the brace (\}?)
-         * is not. This is ok because if capture group 3 is found to exist (i.e. there is a
-         * fallback value), braces are a required part of the syntax. The optional brace rule at
-         * the end is still required, however, to support the cases where there are braces but no
-         * fallback value or no braces at all (see examples above).
+         *    (.*?)
          */
-        Regex::new(r"\$\{?([a-zA-Z_]\w*)(:-(.*)?\})?\}?").expect("invalid envvar regex")
+        Regex::new(r"\$\{?([a-zA-Z_]\w*)(:-(.*?))?\}?$").expect("invalid envvar regex")
     });
 
     // TODO: thiserror errors
