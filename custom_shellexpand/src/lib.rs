@@ -2,14 +2,45 @@
 
 use std::{
     collections::VecDeque,
-    ffi::OsStr,
-    path::{Component, PathBuf},
+    ffi::{OsStr, OsString},
+    path::PathBuf,
     sync::LazyLock,
 };
 
 use anyhow::Context;
 use directories_next::BaseDirs;
 use regex::Regex;
+
+/// Mimic's the behavior of [`PathBuf::components`] while respecting curly braces.
+fn __parse_path_components_with_braces(s: &str) -> Vec<OsString> {
+    let mut brace_depth: u8 = 0;
+    let mut components = Vec::new();
+    let mut comp = OsString::new();
+    let mut comp_is_envvar = false;
+
+    for c in s.chars() {
+        match c {
+            std::path::MAIN_SEPARATOR if brace_depth == 0 => {
+                components.push(comp.clone());
+                comp.clear();
+                comp_is_envvar = false;
+                continue;
+            }
+
+            '$' => comp_is_envvar = true,
+            '{' if comp_is_envvar => brace_depth = brace_depth.saturating_add(1),
+            '}' if comp_is_envvar => brace_depth = brace_depth.saturating_sub(1),
+
+            _ => {}
+        }
+
+        comp.push(c.to_string());
+    }
+
+    components.push(comp.clone());
+
+    components
+}
 
 /// Convert a `&str` slice into a `PathBuf`, expanding envvars and the leading tilde `~`, if it
 /// is there.
@@ -49,27 +80,15 @@ pub fn expand(s: &str) -> anyhow::Result<PathBuf> {
          * There are three capture groups:
          * 1. The environment variable (minus the $)
          *    ([\w_][\w\d_]*)
-         * 2. Everything after (ignore this group)
-         *    (:-(.*)?\})?
+         * 2. Ignore this group
          * 3. The fallback value
-         *    (.*)?
-         *
-         * The extra brace inside capture group 2 is required. Without it, group 3 picks up on the
-         * closing brace since it's greedy and the rule after that should capture the brace (\}?)
-         * is not. This is ok because if capture group 3 is found to exist (i.e. there is a
-         * fallback value), braces are a required part of the syntax. The optional brace rule at
-         * the end is still required, however, to support the cases where there are braces but no
-         * fallback value or no braces at all (see examples above).
+         *    (.*?)
          */
-        Regex::new(r"\$\{?([a-zA-Z_]\w*)(:-(.*)?\})?\}?").expect("invalid envvar regex")
+        Regex::new(r"\$\{?([a-zA-Z_]\w*)(:-(.*?))?\}?$").expect("invalid envvar regex")
     });
 
     // TODO: thiserror errors
-    let path = PathBuf::from(s);
-    let comp_strs = path
-        .components()
-        .map(Component::as_os_str)
-        .collect::<Vec<_>>();
+    let comp_strs = __parse_path_components_with_braces(s);
     let mut expanded_comps = VecDeque::with_capacity(comp_strs.len());
 
     for comp in comp_strs {
@@ -82,23 +101,19 @@ pub fn expand(s: &str) -> anyhow::Result<PathBuf> {
             #[cfg(debug_assertions)]
             println!("expanding envvar '{envvar:?}'");
 
-            let envvar_value = match std::env::var_os(envvar) {
-                Some(value) => {
-                    #[cfg(debug_assertions)]
-                    println!("{envvar:?}={value:?}");
+            let envvar_value = if let Some(value) = std::env::var_os(envvar) {
+                #[cfg(debug_assertions)]
+                println!("{envvar:?}={value:?}");
 
-                    value
-                }
-                None => {
-                    if let Some(fallback) = captures.get(3) {
-                        #[cfg(debug_assertions)]
-                        println!("failed to expand '{envvar:?}', found fallback");
+                value
+            } else if let Some(fallback) = captures.get(3) {
+                let fallback = fallback.as_str();
+                #[cfg(debug_assertions)]
+                println!("failed to expand '{envvar:?}', found fallback '{fallback:?}'");
 
-                        expand(fallback.as_str())?.into_os_string()
-                    } else {
-                        anyhow::bail!("failed to get value of var: {envvar:?}")
-                    }
-                }
+                expand(fallback)?.into_os_string()
+            } else {
+                anyhow::bail!("failed to get value of var: {envvar:?}")
             };
 
             PathBuf::from(envvar_value)
@@ -129,6 +144,22 @@ mod tests {
     use anyhow::Context;
 
     use super::*;
+
+    #[test]
+    fn test_parses_path_with_braces() {
+        let expected = vec!["${within/braces}", "file"];
+        let actual = __parse_path_components_with_braces("${within/braces}/file");
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_parses_path_with_braces_but_no_dollar_sign() {
+        let expected = vec!["{within", "braces}", "file"];
+        let actual = __parse_path_components_with_braces("{within/braces}/file");
+
+        assert_eq!(expected, actual);
+    }
 
     #[test]
     fn test_expand_tilde() -> anyhow::Result<()> {
@@ -191,6 +222,18 @@ mod tests {
         let home = std::env::var("HOME").context("failed to get home dir")?;
         let expected = PathBuf::from(format!("{home}/some/file"));
         let actual = expand("${NO_WAY_YOU_HAVE_DEFINED_THIS:-~}/some/file")?;
+
+        assert_eq!(expected, actual);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_fallback_has_path_components() -> anyhow::Result<()> {
+        let home = std::env::var("HOME").context("failed to get home dir")?;
+        let expected = PathBuf::from(format!("{home}/some/file"));
+
+        let actual = expand("${NO_WAY_YOU_HAVE_DEFINED_THIS:-~/some}/file")?;
 
         assert_eq!(expected, actual);
 
