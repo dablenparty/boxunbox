@@ -2,14 +2,42 @@
 
 use std::{
     collections::VecDeque,
-    ffi::OsStr,
-    path::{Component, PathBuf},
+    ffi::{OsStr, OsString},
+    path::PathBuf,
     sync::LazyLock,
 };
 
 use anyhow::Context;
 use directories_next::BaseDirs;
 use regex::Regex;
+
+/// Mimic's the behavior of [`PathBuf::components`] while respecting curly braces.
+fn __parse_path_components_with_braces(s: &str) -> Vec<OsString> {
+    let mut brace_depth: u8 = 0;
+    let mut components = Vec::new();
+    let mut comp = OsString::new();
+
+    for c in s.chars() {
+        match c {
+            std::path::MAIN_SEPARATOR if brace_depth == 0 => {
+                components.push(comp.clone());
+                comp.clear();
+                continue;
+            }
+
+            '{' => brace_depth = brace_depth.saturating_add(1),
+            '}' => brace_depth = brace_depth.saturating_sub(1),
+
+            _ => {}
+        }
+
+        comp.push(c.to_string());
+    }
+
+    components.push(comp.clone());
+
+    components
+}
 
 /// Convert a `&str` slice into a `PathBuf`, expanding envvars and the leading tilde `~`, if it
 /// is there.
@@ -57,11 +85,7 @@ pub fn expand(s: &str) -> anyhow::Result<PathBuf> {
     });
 
     // TODO: thiserror errors
-    let path = PathBuf::from(s);
-    let comp_strs = path
-        .components()
-        .map(Component::as_os_str)
-        .collect::<Vec<_>>();
+    let comp_strs = __parse_path_components_with_braces(s);
     let mut expanded_comps = VecDeque::with_capacity(comp_strs.len());
 
     for comp in comp_strs {
@@ -83,10 +107,11 @@ pub fn expand(s: &str) -> anyhow::Result<PathBuf> {
                 }
                 None => {
                     if let Some(fallback) = captures.get(3) {
+                        let fallback = fallback.as_str();
                         #[cfg(debug_assertions)]
-                        println!("failed to expand '{envvar:?}', found fallback");
+                        println!("failed to expand '{envvar:?}', found fallback {fallback:?}");
 
-                        expand(fallback.as_str())?.into_os_string()
+                        expand(fallback)?.into_os_string()
                     } else {
                         anyhow::bail!("failed to get value of var: {envvar:?}")
                     }
@@ -121,6 +146,14 @@ mod tests {
     use anyhow::Context;
 
     use super::*;
+
+    #[test]
+    fn test_parses_path_with_braces() {
+        let expected = vec!["${within/braces}", "file"];
+        let actual = __parse_path_components_with_braces("${within/braces}/file");
+
+        assert_eq!(expected, actual);
+    }
 
     #[test]
     fn test_expand_tilde() -> anyhow::Result<()> {
