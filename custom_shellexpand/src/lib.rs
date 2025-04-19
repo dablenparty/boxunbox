@@ -184,6 +184,30 @@ mod tests {
     }
 
     #[test]
+    fn test_expand_envvar_in_middle() -> anyhow::Result<()> {
+        const TEST_ENVVAR_KEY: &str = "__SHELLEXPAND_TEST_ENVVAR";
+        const TEST_ENVVAR_VALUE: &str = "test_value";
+
+        let test_envvar_value = unsafe {
+            std::env::set_var(TEST_ENVVAR_KEY, "test_value");
+            let value = std::env::var(TEST_ENVVAR_KEY).context("failed to set test envvar")?;
+            assert_eq!(
+                TEST_ENVVAR_VALUE, value,
+                "failed to set {TEST_ENVVAR_KEY}={TEST_ENVVAR_VALUE}, got '{value}' instead."
+            );
+
+            value
+        };
+
+        let expected = PathBuf::from(format!("/path/to/{test_envvar_value}/some/file"));
+        let actual = expand(&format!("/path/to/${TEST_ENVVAR_KEY}/some/file"))?;
+
+        assert_eq!(expected, actual);
+
+        Ok(())
+    }
+
+    #[test]
     fn test_expand_envvar_with_braces() -> anyhow::Result<()> {
         let home = std::env::var("HOME").context("failed to get home dir")?;
         let expected = PathBuf::from(format!("{home}/some/file"));
