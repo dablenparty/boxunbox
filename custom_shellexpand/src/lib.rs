@@ -14,11 +14,19 @@ use regex::Regex;
 /// Mimic's the behavior of [`PathBuf::components`] while respecting curly braces.
 fn __parse_path_components_with_braces(s: &str) -> Vec<OsString> {
     let mut brace_depth: u8 = 0;
-    let mut components = Vec::new();
+    let mut components = Vec::<OsString>::new();
     let mut comp = OsString::new();
     let mut comp_is_envvar = false;
+    let mut char_iter = s.chars().peekable();
 
-    for c in s.chars() {
+    // if path starts with path sep, consider it a path component
+    // and remove it from the iterator
+    if char_iter.peek().copied() == Some(std::path::MAIN_SEPARATOR) {
+        components.push(std::path::MAIN_SEPARATOR.to_string().into());
+        let _ = char_iter.next();
+    }
+
+    for c in char_iter {
         match c {
             std::path::MAIN_SEPARATOR if brace_depth == 0 => {
                 components.push(comp.clone());
