@@ -114,6 +114,18 @@ impl PackageConfig {
         formatc!(".unboxrc.{}.ron", std::env::consts::OS)
     }
 
+    /// Create a new [`PackageConfig`] for the given [`package`] with default values.
+    ///
+    /// # Arguments
+    ///
+    /// - `package` - Package to make config for.
+    pub fn new<P: Into<PathBuf>>(package: P) -> Self {
+        Self {
+            package: package.into(),
+            ..Default::default()
+        }
+    }
+
     /// Merge with [`BoxUnboxCli`] args. Consumes this struct.
     ///
     /// # Arguments

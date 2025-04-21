@@ -56,7 +56,7 @@ fn main() -> anyhow::Result<()> {
 
             #[allow(unused_variables)]
             Err(ParseError::ConfigNotFound(rc_path)) => {
-                let config = PackageConfig::default().merge_with_cli(&cli)?;
+                let config = PackageConfig::new(package).merge_with_cli(&cli)?;
 
                 #[cfg(debug_assertions)]
                 {
