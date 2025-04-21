@@ -73,6 +73,35 @@ pub struct PackageConfig {
     pub use_relative_links: bool,
 }
 
+impl TryFrom<PathBuf> for PackageConfig {
+    type Error = ParseError;
+
+    fn try_from(package: PathBuf) -> Result<Self, Self::Error> {
+        let default_rc_path = package.join(PackageConfig::__rc_file_name());
+        let os_rc_path = package.join(PackageConfig::__os_rc_file_name());
+
+        let rc_file = if os_rc_path.try_exists().unwrap_or(false) {
+            os_rc_path
+        } else if default_rc_path.try_exists().unwrap_or(false) {
+            default_rc_path
+        } else {
+            // no config found for this package
+            return Err(ParseError::ConfigNotFound(package));
+        };
+
+        #[cfg(debug_assertions)]
+        println!("reading config: {rc_file:?}");
+
+        let rc_str = fs::read_to_string(&rc_file)
+            .with_context(|| format!("failed to read file: {rc_file:?}"))?;
+
+        let mut rc: PackageConfig = ron::from_str(&rc_str)?;
+        rc.package = package;
+
+        Ok(rc)
+    }
+}
+
 impl PackageConfig {
     /// Expected file name of the RC file.
     const fn __rc_file_name() -> &'static str {
@@ -128,31 +157,9 @@ impl PackageConfig {
     /// - The RC file doesn't exist.
     /// - Failure to read RC file.
     /// - Failure to parse RC file with [`ron`].
-    pub fn try_from_package<P: AsRef<Path>>(package: P) -> Result<Self, ParseError> {
-        let package = package.as_ref();
-        let default_rc_path = package.join(PackageConfig::__rc_file_name());
-        let os_rc_path = package.join(PackageConfig::__os_rc_file_name());
-
-        // TODO: errors for this
-        let rc_file = if os_rc_path.try_exists().unwrap_or(false) {
-            os_rc_path
-        } else if default_rc_path.try_exists().unwrap_or(false) {
-            default_rc_path
-        } else {
-            // no config found for this package
-            return Err(ParseError::ConfigNotFound(package.to_path_buf()));
-        };
-
-        #[cfg(debug_assertions)]
-        println!("reading config: {rc_file:?}");
-
-        let rc_str = fs::read_to_string(&rc_file)
-            .with_context(|| format!("failed to read file: {rc_file:?}"))?;
-
-        let mut rc: PackageConfig = ron::from_str(&rc_str)?;
-        rc.package = package.to_path_buf();
-
-        Ok(rc)
+    #[inline]
+    pub fn try_from_package<P: Into<PathBuf>>(package: P) -> Result<Self, ParseError> {
+        Self::try_from(package.into())
     }
 
     /// Save this [`PackageConfig`] to a `package` directory.
