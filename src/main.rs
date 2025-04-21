@@ -20,7 +20,6 @@ fn main() -> anyhow::Result<()> {
     let BoxUnboxCli {
         color_override,
         dry_run,
-        ref packages,
         save_config,
         save_os_config,
         ..
@@ -32,7 +31,8 @@ fn main() -> anyhow::Result<()> {
         ColorOverride::Never => colored::control::set_override(false),
     }
 
-    let packages = packages
+    let packages = cli
+        .packages
         .iter()
         .map(|pkg| {
             if !pkg.is_dir() {
@@ -44,8 +44,8 @@ fn main() -> anyhow::Result<()> {
         })
         .collect::<anyhow::Result<Vec<_>>>()?;
 
-    for package in packages {
-        let pkg_config = match PackageConfig::try_from_package(&package) {
+    for package in &packages {
+        let pkg_config = match PackageConfig::try_from_package(package) {
             Ok(rc) => {
                 #[cfg(debug_assertions)]
                 println!("parsed_rc={rc:#?}");
@@ -82,7 +82,7 @@ fn main() -> anyhow::Result<()> {
                     .expect("package path has no basename")
             );
             println!("Saving config for {}", pkg_str.bright_green());
-            pkg_config.save_to_package(&package, save_os_config)?;
+            pkg_config.save_to_package(package, save_os_config)?;
         }
 
         #[cfg(debug_assertions)]
