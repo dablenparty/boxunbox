@@ -47,9 +47,9 @@ impl fmt::Display for ColorOverride {
 #[command(about, long_about = None, version)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct BoxUnboxCli {
-    /// Package (directory) to unbox.
+    /// Package (directory) to unbox. Specify multiple to unbox multiple.
     #[arg(required = true, value_parser = cli_parse_pathbuf, value_hint = ValueHint::DirPath)]
-    pub package: PathBuf,
+    pub packages: Vec<PathBuf>,
     /// Directory to unbox PACKAGE to. [default: ~]
     #[arg(short, long, value_parser = cli_parse_pathbuf, value_hint = ValueHint::DirPath)]
     pub target: Option<PathBuf>,

@@ -49,7 +49,7 @@ fn __ignore_pats_default() -> Vec<Regex> {
     DEFAULT_REGEX_VEC.clone()
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct PackageConfig {
     #[serde(skip)]
@@ -71,43 +71,6 @@ pub struct PackageConfig {
     pub no_create_dirs: bool,
     #[serde(default = "bool::default")]
     pub use_relative_links: bool,
-}
-
-impl TryFrom<BoxUnboxCli> for PackageConfig {
-    type Error = io::Error;
-
-    fn try_from(value: BoxUnboxCli) -> Result<Self, Self::Error> {
-        let BoxUnboxCli {
-            package,
-            target,
-            ignore_exists,
-            ignore_pats: cli_ignore_pats,
-            link_root,
-            no_create_dirs,
-            perform_box,
-            force,
-            use_relative_links,
-            ..
-        } = value;
-
-        // prepend default ignore pattern(s)
-        let mut ignore_pats = __ignore_pats_default();
-        ignore_pats.extend(cli_ignore_pats);
-
-        let conf = Self {
-            package: package.canonicalize()?,
-            target: target.unwrap_or_else(__target_default).canonicalize()?,
-            ignore_exists,
-            ignore_pats,
-            link_root,
-            no_create_dirs,
-            perform_box,
-            force,
-            use_relative_links,
-        };
-
-        Ok(conf)
-    }
 }
 
 impl PackageConfig {
