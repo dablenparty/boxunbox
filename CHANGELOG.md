@@ -1,3 +1,62 @@
+## [0.1.23](https://github.com/dablenparty/boxunbox/compare/v0.1.22..v0.1.23) - 2025-04-21
+
+### 🚜 Refactor
+
+- *(custom_shellexpand)* [**breaking**] Thiserror errors - ([3ff9000](https://github.com/dablenparty/boxunbox/commit/3ff9000e9056d8c1c85e57ffdfd0a8c6c3779d1f))
+
+### ⚙️ Miscellaneous Tasks
+
+- Bump version (v0.1.23) - ([6750d42](https://github.com/dablenparty/boxunbox/commit/6750d42c135d15aaa92c3152042a9afb88111e72))
+- Add changelog.yaml workflow - ([6d89e66](https://github.com/dablenparty/boxunbox/commit/6d89e66b138e378dadb3a6d555c0ab976ec769a5))
+
+
+## [0.1.22](https://github.com/dablenparty/boxunbox/compare/v0.1.21..v0.1.22) - 2025-04-21
+
+### ⛰️  Features
+
+- *(cli)* [**breaking**] Add support for unboxing multiple packages - ([f006f96](https://github.com/dablenparty/boxunbox/commit/f006f96edf56b7ea3babff999165ed39fbabc999))
+
+### 🚜 Refactor
+
+- *(main)* Refactor references - ([1648f1b](https://github.com/dablenparty/boxunbox/commit/1648f1b821161cc0bc6f9c8576f2efb9bac66020))
+
+### ⚙️ Miscellaneous Tasks
+
+- Bump version (v0.1.22) - ([2a3573c](https://github.com/dablenparty/boxunbox/commit/2a3573c818a92146b4f4575935dbfafa23561578))
+
+
+## [0.1.21](https://github.com/dablenparty/boxunbox/compare/v0.1.20..v0.1.21) - 2025-04-21
+
+### 🐛 Bug Fixes
+
+- *(custom_shellexpand)* Support root / as path component - ([8b8e160](https://github.com/dablenparty/boxunbox/commit/8b8e1606ff22b531e7490f1e696fd21149cb82c9))
+- *(custom_shellexpand)* Add check for $ before envvars - ([611e4d1](https://github.com/dablenparty/boxunbox/commit/611e4d11f40ec6e743c7647110afc098aec5f0da))
+- *(custom_shellexpand)* Lazily consume envvar fallback in regex - ([6a76820](https://github.com/dablenparty/boxunbox/commit/6a76820fe6f5fa4cd931352870965659c94f6166))
+- *(plan)* No longer crashes when changing target in nested config - ([bb46812](https://github.com/dablenparty/boxunbox/commit/bb468125f19656119081c777f95bf37a7a77da73))
+
+### 🚜 Refactor
+
+- *(custom_shellexpand)* Custom path component parser - ([c725c37](https://github.com/dablenparty/boxunbox/commit/c725c37bd7a1e5c7135235d5e3d31ec0afbfe2b6))
+
+### 🎨 Styling
+
+- *(custom_shellexpand)* Replace match with if-let - ([6b4c46e](https://github.com/dablenparty/boxunbox/commit/6b4c46ea7d937799cdbe69905ddee8d81a9a3fe3))
+
+### 🧪 Testing
+
+- *(custom_shellexpand)* Add test for envvar in middle of string path - ([3e99350](https://github.com/dablenparty/boxunbox/commit/3e99350cee8d65efabc48ab07ac0f8d1cabc9eb5))
+- *(custom_shellexpand)* Add test for fallback with path value - ([ce74e1d](https://github.com/dablenparty/boxunbox/commit/ce74e1d45a33220553c027d10f3f21d7e9302b38))
+
+### ⚙️ Miscellaneous Tasks
+
+- Bump version (v0.1.21) - ([965eeae](https://github.com/dablenparty/boxunbox/commit/965eeae94cb91d2b93abb0f5e3cf89b0129d4c63))
+- Add cargo.yml - ([429debc](https://github.com/dablenparty/boxunbox/commit/429debc3023780da77f2d597b6aedf84a15e08b1))
+
+### Build
+
+- *(Cargo.toml)* Update ron to 0.10.1 - ([dd9520b](https://github.com/dablenparty/boxunbox/commit/dd9520bd812b3acdf48e9dcdd67f67c8f6cff8c5))
+
+
 ## [0.1.20](https://github.com/dablenparty/boxunbox/compare/v0.1.19..v0.1.20) - 2025-03-26
 
 ### 🐛 Bug Fixes
@@ -19,11 +78,8 @@
 
 ### ⚙️ Miscellaneous Tasks
 
-- Bump version (v0.1.20) - ([ed1b91c](https://github.com/dablenparty/boxunbox/commit/ed1b91cc495abb27a034b9adf16fad2258eb2fd6))
+- Bump version (v0.1.20) - ([b4fad03](https://github.com/dablenparty/boxunbox/commit/b4fad035c64cba4053db88f9892fcf78340f6de1))
 
-## New Contributors ❤️
-
-* @dablenparty made their first contribution
 
 ## [0.1.19](https://github.com/dablenparty/boxunbox/compare/v0.1.18..v0.1.19) - 2025-03-26
 
