@@ -7,9 +7,12 @@ use std::{
     sync::LazyLock,
 };
 
-use anyhow::Context;
 use directories_next::BaseDirs;
 use regex::Regex;
+
+use crate::errors::ExpandError;
+
+pub mod errors;
 
 /// Mimic's the behavior of [`PathBuf::components`] while respecting curly braces.
 fn __parse_path_components_with_braces(s: &str) -> Vec<OsString> {
@@ -72,7 +75,7 @@ fn __parse_path_components_with_braces(s: &str) -> Vec<OsString> {
 ///
 /// - An envvar cannot be expanded
 /// - You don't have a home directory
-pub fn expand(s: &str) -> anyhow::Result<PathBuf> {
+pub fn expand(s: &str) -> Result<PathBuf, ExpandError> {
     /// Lazy wrapper around [`directories_next::BaseDirs::new`].
     static BASE_DIRS: LazyLock<BaseDirs> =
         LazyLock::new(|| BaseDirs::new().expect("failed to locate users home directory"));
@@ -104,7 +107,7 @@ pub fn expand(s: &str) -> anyhow::Result<PathBuf> {
             let envvar = captures
                 .get(1)
                 .and_then(|m| if m.is_empty() { None } else { Some(m.as_str()) })
-                .context("matched envvar regex, but failed to capture envvar")?;
+                .ok_or(ExpandError::EmptyEnvvarCapture)?;
 
             #[cfg(debug_assertions)]
             println!("expanding envvar '{envvar:?}'");
@@ -121,7 +124,7 @@ pub fn expand(s: &str) -> anyhow::Result<PathBuf> {
 
                 expand(fallback)?.into_os_string()
             } else {
-                anyhow::bail!("failed to get value of var: {envvar:?}")
+                return Err(ExpandError::EnvvarReadError(envvar.to_string()));
             };
 
             PathBuf::from(envvar_value)
@@ -152,6 +155,16 @@ mod tests {
     use anyhow::Context;
 
     use super::*;
+
+    #[test]
+    fn test_fails_to_expand_non_existent_envvar() {
+        const TEST_ENVVAR: &str = "NO_WAY_YOU_HAVE_DEFINED_THIS";
+
+        match expand(&format!("${TEST_ENVVAR}/some/file")) {
+            Err(ExpandError::EnvvarReadError(envvar)) => assert_eq!(envvar, TEST_ENVVAR),
+            res => panic!("expected error, got {res:?}"),
+        }
+    }
 
     #[test]
     fn test_parses_path_with_braces() {

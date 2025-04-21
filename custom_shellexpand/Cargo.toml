@@ -7,3 +7,4 @@ edition = "2024"
 anyhow.workspace = true
 directories-next.workspace = true
 regex.workspace = true
+thiserror.workspace = true

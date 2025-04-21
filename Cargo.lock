@@ -193,6 +193,7 @@ dependencies = [
  "anyhow",
  "directories-next",
  "regex",
+ "thiserror 2.0.11",
 ]
 
 [[package]]

@@ -15,6 +15,7 @@ members = ["custom_shellexpand"]
 anyhow = "1.0.96"
 directories-next = "2.0.0"
 regex = "1.11.1"
+thiserror = "2.0.11"
 
 [dependencies]
 anyhow.workspace = true
@@ -29,7 +30,7 @@ regex.workspace = true
 ron = "0.10.1"
 serde = { version = "1.0.218", features = ["derive"] }
 serde_regex = "1.1.0"
-thiserror = "2.0.11"
+thiserror.workspace = true
 walkdir = "2.5.0"
 
 [profile.release]
