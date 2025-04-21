@@ -98,7 +98,6 @@ pub fn expand(s: &str) -> Result<PathBuf, ExpandError> {
         Regex::new(r"\$\{?([a-zA-Z_]\w*)(:-(.*?))?\}?$").expect("invalid envvar regex")
     });
 
-    // TODO: thiserror errors
     let comp_strs = __parse_path_components_with_braces(s);
     let mut expanded_comps = VecDeque::with_capacity(comp_strs.len());
 
