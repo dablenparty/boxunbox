@@ -14,4 +14,6 @@ PackageConfig(
     // When a field is missing from the config, it's default is used
     // Create relative symlinks instead of absolute links.
     // use_relative_links: false,
+    // Create hard links instead of soft (sym)links
+    use_hard_links: false,
 )
