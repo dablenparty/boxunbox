@@ -60,8 +60,11 @@ pub struct BoxUnboxCli {
     #[arg(short, long)]
     pub link_root: bool,
     /// Create relative links instead of absolute links.
-    #[arg(short = 'r', long)]
+    #[arg(short = 'r', long = "relative-links")]
     pub use_relative_links: bool,
+    /// Create hard links instead of soft links (symlinks)
+    #[arg(short = 'H', long = "hard-links")]
+    pub use_hard_links: bool,
     /// Do not create directories at target locations. Only applies to strategies that create
     /// directories.
     #[arg(long)]
@@ -77,7 +80,7 @@ pub struct BoxUnboxCli {
     #[arg(short = 'e', long)]
     pub ignore_exists: bool,
     /// Save the current CLI parameters to the config file. WARNING: overwrites the existing file!
-    #[arg(long)]
+    #[arg(short = 's', long)]
     pub save_config: bool,
     /// Save an OS-specific config insetad of a generic one. Overwrites --save-config.
     #[arg(short = 'o', long)]

@@ -36,7 +36,7 @@ fn __target_default() -> PathBuf {
 }
 
 /// Utility function returning the default value for [`PackageConfig::ignore_pats`], which is a
-/// Regex for the `.unboxrc.ron` file.
+/// Regex for the `.unboxrc.ron` file, `git` files, and some `.md` files.
 fn __ignore_pats_default() -> Vec<Regex> {
     static DEFAULT_REGEX_VEC: LazyLock<Vec<Regex>> = LazyLock::new(|| {
         vec![
@@ -49,7 +49,7 @@ fn __ignore_pats_default() -> Vec<Regex> {
     DEFAULT_REGEX_VEC.clone()
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct PackageConfig {
     #[serde(skip)]
@@ -71,6 +71,8 @@ pub struct PackageConfig {
     pub no_create_dirs: bool,
     #[serde(default = "bool::default")]
     pub use_relative_links: bool,
+    #[serde(default = "bool::default")]
+    pub use_hard_links: bool,
 }
 
 impl TryFrom<PathBuf> for PackageConfig {
@@ -122,7 +124,15 @@ impl PackageConfig {
     pub fn new<P: Into<PathBuf>>(package: P) -> Self {
         Self {
             package: package.into(),
-            ..Default::default()
+            force: false,
+            ignore_exists: false,
+            perform_box: false,
+            target: __target_default(),
+            ignore_pats: __ignore_pats_default(),
+            link_root: false,
+            no_create_dirs: false,
+            use_relative_links: false,
+            use_hard_links: false,
         }
     }
 
@@ -151,6 +161,7 @@ impl PackageConfig {
             no_create_dirs: cli.no_create_dirs || self.no_create_dirs,
             perform_box: cli.perform_box || self.perform_box,
             use_relative_links: self.use_relative_links || cli.use_relative_links,
+            use_hard_links: self.use_hard_links || cli.use_hard_links,
         };
 
         Ok(conf)

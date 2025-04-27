@@ -43,6 +43,7 @@ impl fmt::Display for UnboxPlan {
         } = self;
 
         // TODO: rewrite this to account for changed targets (https://github.com/dablenparty/boxunbox/issues/8)
+        // TODO: better pluralization
 
         let tilde_package = replace_home_with_tilde(&config.package);
         let colored_package_string = tilde_package.display().to_string().bright_green();
@@ -71,11 +72,19 @@ impl fmt::Display for UnboxPlan {
             "Create"
         };
 
+        // cleaner than nesting if's all over
+        let colored_link_noun = match (config.use_hard_links, links.len() == 1) {
+            (true, true) => "hard link".bright_magenta(),
+            (true, false) => "hard links".bright_magenta(),
+            (false, true) => "symlink".cyan(),
+            (false, false) => "symlinks".cyan(),
+        };
+
         if config.link_root {
-            writeln!(f, "{create_verb} one symlink:")?;
+            writeln!(f, "{create_verb} one {colored_link_noun}:")?;
             writeln!(f, "{colored_target_string} -> {colored_package_string}")?;
         } else {
-            writeln!(f, "{create_verb} symlinks:")?;
+            writeln!(f, "{create_verb} {colored_link_noun}:")?;
 
             for (src, dest) in links {
                 let src_to_color = replace_home_with_tilde(src).display().to_string();
@@ -95,7 +104,7 @@ impl fmt::Display for UnboxPlan {
         if config.perform_box {
             writeln!(
                 f,
-                "If a symlink doesn't exist, it will {}",
+                "If a {colored_link_noun} doesn't exist, it will {}",
                 "be ignored".bright_blue()
             )?;
         } else {
@@ -108,7 +117,10 @@ impl fmt::Display for UnboxPlan {
                 "cause an error".bright_magenta()
             };
 
-            writeln!(f, "If a target file exists, it will {target_action}")?;
+            writeln!(
+                f,
+                "If a target {colored_link_noun} exists, it will {target_action}"
+            )?;
         }
 
         Ok(())
@@ -430,9 +442,15 @@ impl UnboxPlan {
                 }
             }
 
-            os_symlink(src, dest)
-                .with_context(|| format!("failed to symlink {src:?} -> {dest:?}"))
-                .map_err(UnboxError::from)
+            if config.use_hard_links {
+                std::fs::hard_link(src, dest)
+                    .with_context(|| format!("failed to hard link {src:?} -> {dest:?}"))
+                    .map_err(UnboxError::from)
+            } else {
+                os_symlink(src, dest)
+                    .with_context(|| format!("failed to symlink {src:?} -> {dest:?}"))
+                    .map_err(UnboxError::from)
+            }
         })?;
 
         Ok(())
