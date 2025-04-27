@@ -1,3 +1,31 @@
+## [0.1.24](https://github.com/dablenparty/boxunbox/compare/v0.1.23..v0.1.24) - 2025-04-27
+
+### ⛰️  Features
+
+- Add hard link support - ([85b3b4e](https://github.com/dablenparty/boxunbox/commit/85b3b4eebd04f1fb7fe5767847562ad4e0c68ee9))
+
+### 🐛 Bug Fixes
+
+- *(package)* No more crash when unboxing package without config - ([e2e26de](https://github.com/dablenparty/boxunbox/commit/e2e26de62155ceb300649f4943c0d4258c8981f1))
+
+### 🚜 Refactor
+
+- *(package)* Extract TryFrom<PathBuf> for PackageConfig - ([913ef81](https://github.com/dablenparty/boxunbox/commit/913ef816810550001c396ae144603156a5a2f208))
+
+### 📚 Documentation
+
+- *(CHANGELOG)* Update CHANGELOG.md - ([ab32f8e](https://github.com/dablenparty/boxunbox/commit/ab32f8e700e19172f5181caaa66365c95b9fb850))
+- Remove completed TODO - ([1514af9](https://github.com/dablenparty/boxunbox/commit/1514af9c8b2098079ae8d1b643f9d6b5872460fb))
+
+### ⚙️ Miscellaneous Tasks
+
+- *(changelog)* [**breaking**] Remove changelog workflow - ([4cca32c](https://github.com/dablenparty/boxunbox/commit/4cca32c9859558aa9ade7a9a4bd04bb94a843ce3))
+- Bump version (v0.1.24) - ([251ba2e](https://github.com/dablenparty/boxunbox/commit/251ba2e592c3b9ba0294a580056ecad6d59bc75f))
+
+## New Contributors ❤️
+
+* @dablenparty made their first contribution
+
 ## [0.1.23](https://github.com/dablenparty/boxunbox/compare/v0.1.22..v0.1.23) - 2025-04-21
 
 ### 🚜 Refactor

@@ -1,8 +1,10 @@
 [package]
 name = "boxunbox"
-version = "0.1.23"
+version = "0.1.24"
 edition = "2024"
 readme = "README.md"
+description = "A simple symlinker inspired by GNU stow"
+repository = "https://github.com/dablenparty/boxunbox"
 
 [[bin]]
 name = "unbox"
