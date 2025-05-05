@@ -35,6 +35,9 @@ serde_regex = "1.1.0"
 thiserror.workspace = true
 walkdir = "2.5.0"
 
+[dev-dependencies]
+tempfile = "3.19.1"
+
 [profile.release]
 opt-level = "z"
 strip = true
