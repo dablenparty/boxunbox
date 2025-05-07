@@ -1,0 +1,6 @@
+[submodule "aur/boxunbox"]
+	path = aur/boxunbox
+	url = ssh://aur@aur.archlinux.org/boxunbox.git
+[submodule "aur/boxunbox-git"]
+	path = aur/boxunbox-git
+	url = ssh://aur@aur.archlinux.org/boxunbox-git.git
