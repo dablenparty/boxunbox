@@ -1,3 +1,19 @@
+## [0.1.25](https://github.com/dablenparty/boxunbox/compare/v0.1.24..v0.1.25) - 2025-05-07
+
+### 📚 Documentation
+
+- *(README)* Clarify CLI flag - ([ca689c5](https://github.com/dablenparty/boxunbox/commit/ca689c5293cf5985fcc18fa37576002b1688561e))
+- *(example)* Update example config - ([9c52bce](https://github.com/dablenparty/boxunbox/commit/9c52bcefd317fb366ae7df319b3ebee041ef398f))
+
+### ⚙️ Miscellaneous Tasks
+
+- Bump version (v0.1.25) - ([1d641a8](https://github.com/dablenparty/boxunbox/commit/1d641a86a28b42974116cf74841d9212dcd4f234))
+- Add 0BSD license - ([3adf7d0](https://github.com/dablenparty/boxunbox/commit/3adf7d04b308ba749b12d7a08c88896954ebda26))
+
+## New Contributors ❤️
+
+* @dablenparty made their first contribution
+
 ## [0.1.24](https://github.com/dablenparty/boxunbox/compare/v0.1.23..v0.1.24) - 2025-04-27
 
 ### ⛰️  Features
@@ -20,11 +36,8 @@
 ### ⚙️ Miscellaneous Tasks
 
 - *(changelog)* [**breaking**] Remove changelog workflow - ([4cca32c](https://github.com/dablenparty/boxunbox/commit/4cca32c9859558aa9ade7a9a4bd04bb94a843ce3))
-- Bump version (v0.1.24) - ([251ba2e](https://github.com/dablenparty/boxunbox/commit/251ba2e592c3b9ba0294a580056ecad6d59bc75f))
+- Bump version (v0.1.24) - ([ed942b0](https://github.com/dablenparty/boxunbox/commit/ed942b0108240efc0e1636c0c84bd7b7ebe202ea))
 
-## New Contributors ❤️
-
-* @dablenparty made their first contribution
 
 ## [0.1.23](https://github.com/dablenparty/boxunbox/compare/v0.1.22..v0.1.23) - 2025-04-21
 
