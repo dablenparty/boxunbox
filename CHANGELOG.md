@@ -1,3 +1,37 @@
+## [0.1.26](https://github.com/dablenparty/boxunbox/compare/v0.1.25..v0.1.26) - 2025-05-08
+
+### ⛰️  Features
+
+- Add tag_release.sh - ([f0f6134](https://github.com/dablenparty/boxunbox/commit/f0f613456b804a24c6c219c9a3924bd32836950c))
+
+### 🐛 Bug Fixes
+
+- *(tag_release.sh)* Alias sed to gsed on macOS - ([8219946](https://github.com/dablenparty/boxunbox/commit/8219946a15426bfcd9355a920dafeef79fd49484))
+
+### 🚜 Refactor
+
+- *(custom_shellexpand)* [**breaking**] Remove crate - ([83d0182](https://github.com/dablenparty/boxunbox/commit/83d01827c2823127f7c6e224c17c5d616d779c0d))
+
+### 📚 Documentation
+
+- *(README)* Add Installation section - ([f099f60](https://github.com/dablenparty/boxunbox/commit/f099f60be600b76472032c1375d56ae78d064f32))
+
+### ⚙️ Miscellaneous Tasks
+
+- Bump version (v0.1.26) - ([c9a8b45](https://github.com/dablenparty/boxunbox/commit/c9a8b45977b751e48cb3780882256f53cd58ac5e))
+- Add AUR submodules - ([a869fa4](https://github.com/dablenparty/boxunbox/commit/a869fa443b7069b6d0a2e073d2597f5229298da2))
+
+### Build
+
+- *(Cargo.toml)* Add exclude list - ([a820c33](https://github.com/dablenparty/boxunbox/commit/a820c339975a7abb9499cd1feabe4e59aa583b93))
+- *(Cargo.toml)* Add categories - ([ba9c41c](https://github.com/dablenparty/boxunbox/commit/ba9c41cbeea27c9086c2964bb6ca4af1bc7ed7d6))
+- *(tag_release.sh)* Commit PKGBUILD changes - ([b1beeef](https://github.com/dablenparty/boxunbox/commit/b1beeef24b179265272c34220e208b42d71c1cc8))
+- *(tag_release.sh)* Use cargo package - ([bfc7b62](https://github.com/dablenparty/boxunbox/commit/bfc7b6289e0c0a0dd31a6528ad0a119e02f9040f))
+
+## New Contributors ❤️
+
+* @dablenparty made their first contribution
+
 ## [0.1.25](https://github.com/dablenparty/boxunbox/compare/v0.1.24..v0.1.25) - 2025-05-07
 
 ### 📚 Documentation
@@ -7,12 +41,9 @@
 
 ### ⚙️ Miscellaneous Tasks
 
-- Bump version (v0.1.25) - ([1d641a8](https://github.com/dablenparty/boxunbox/commit/1d641a86a28b42974116cf74841d9212dcd4f234))
+- Bump version (v0.1.25) - ([086a229](https://github.com/dablenparty/boxunbox/commit/086a22909e7ecadf7ed9be585df661303f23d180))
 - Add 0BSD license - ([3adf7d0](https://github.com/dablenparty/boxunbox/commit/3adf7d04b308ba749b12d7a08c88896954ebda26))
 
-## New Contributors ❤️
-
-* @dablenparty made their first contribution
 
 ## [0.1.24](https://github.com/dablenparty/boxunbox/compare/v0.1.23..v0.1.24) - 2025-04-27
 
