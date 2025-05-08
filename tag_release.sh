@@ -25,20 +25,22 @@ git commit -m "chore: bump version (v$pkgver)"
 # validate cargo package
 cargo package
 
-# tag new commit
+# update PKGBUILD
+cd aur/boxunbox || exit 1
+sed -Ei "s/^pkgver=.+?/pkgver=$pkgver/" PKGBUILD
+makepkg --printsrcinfo >.SRCINFO
+git add .
+git commit -m "build: v$pkgver"
+cd ../.. || exit 1
+git add aur/*
+git commit --amend --no-edit --allow-empty
+
+# tag new commit for git cliff
 git tag -- "v$pkgver" "$(git rev-parse HEAD)"
 
 # update the CHANGELOG and amend it to the tagged commit
 git cliff -o CHANGELOG.md
 git add CHANGELOG.md
 git commit --amend --no-edit --allow-empty
-# re-tag commit after amend
+# re-tag commit after amending CHANGELOG because hash changes
 git tag --force -- "v$pkgver" "$(git rev-parse HEAD)"
-
-cd aur/boxunbox || exit 1
-# update PKGBUILD
-sed -Ei "s/^pkgver=.+?/pkgver=$pkgver/" PKGBUILD
-makepkg --printsrcinfo >.SRCINFO
-git add .
-git commit -m "build: v$pkgver"
-cd ../.. || exit 1
