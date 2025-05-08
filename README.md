@@ -14,6 +14,44 @@ In all honesty, I wanted to be able to control where _each individual folder_ go
 | Only symlinks files by default, creating directories as needed        | Creates as few symlinks as possible      |
 | Re-creates directory structure in target until nested config is found | Re-creates directory structure in target |
 
+## Installation
+
+At the time of writing, there are currently three supported installation methods.
+
+### Arch User Repository (AUR)
+
+There are two AUR packages:
+
+- [boxunbox](https://aur.archlinux.org/packages/boxunbox): latest tagged release
+- [boxunbox-git](https://aur.archlinux.org/packages/boxunbox-git): latest commit on `main`
+
+They aren't usually different by much. I recommend installing with an AUR helper:
+
+```bash
+paru -S boxunbox
+# or
+paru -S boxunbox-git
+```
+
+### Cargo
+
+You can install `boxunbox` from crates.io:
+
+```bash
+cargo install boxunbox
+```
+
+### Manual Local Installation
+
+First, clone the repostiory, then compile/install with one command:
+
+```bash
+git clone https://github.com/dablenparty/boxunbox.git
+cargo install --path boxunbox
+```
+
+Explore `cargo install --help` for more installation options.
+
 ## Configuration
 
 For CLI args, read the output of `unbox --help`. See the [example config](example.unboxrc.ron) for an overview of the config file. Alternatively, you can just view the [package config struct definition](src/package.rs) if you're comfortable with Rust.
