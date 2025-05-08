@@ -18,12 +18,12 @@ if [[ -n "$(git tag --list "v$pkgver")" ]]; then
   exit 1
 fi
 
-# update Cargo.lock
-cargo update
-
 # commit version bump
 git add Cargo.*
 git commit -m "chore: bump version (v$pkgver)"
+
+# validate cargo package
+cargo package
 
 # tag new commit
 git tag -- "v$pkgver" "$(git rev-parse HEAD)"
