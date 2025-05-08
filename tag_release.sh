@@ -6,6 +6,12 @@ set -e
 # Simply change the version string in Cargo.toml, but DO NOT COMMIT THE CHANGE!
 # Just run this script in the dirty repo, it'll commit everything for you.
 
+if [[ "$OSTYPE" =~ ^darwin.* ]]; then
+  sed() {
+    gsed "$@"
+  }
+fi
+
 pkgver="$(sed -En 's/^version\s*=\s*"(.+?)"$/\1/p' Cargo.toml)"
 if [[ -n "$(git tag --list "v$pkgver")" ]]; then
   echo "error: tag v$pkgver already exists. Did you forget to update the version in Cargo.toml?" 1>&2
