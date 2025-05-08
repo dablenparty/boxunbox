@@ -6,6 +6,7 @@ license-file = "LICENSE"
 readme = "README.md"
 description = "A simple symlinker inspired by GNU stow"
 repository = "https://github.com/dablenparty/boxunbox"
+categories = ["command-line-utilities", "filesystem"]
 
 [[bin]]
 name = "unbox"
