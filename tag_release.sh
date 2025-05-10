@@ -12,13 +12,14 @@ if [[ "$OSTYPE" =~ ^darwin.* ]]; then
   }
 fi
 
-pkgver="$(sed -En 's/^version\s*=\s*"(.+?)"$/\1/p' Cargo.toml)"
+pkgver="$(rg --color=never -Noe '^version\s*=\s*"(.+?)"$' --replace '$1' Cargo.toml)"
 if [[ -n "$(git tag --list "v$pkgver")" ]]; then
   echo "error: tag v$pkgver already exists. Did you forget to update the version in Cargo.toml?" 1>&2
   exit 1
 fi
 
 # commit version bump
+cargo update
 git add Cargo.*
 git commit -m "chore: bump version (v$pkgver)"
 
@@ -27,7 +28,8 @@ cargo package
 
 # update PKGBUILD
 cd aur/boxunbox || exit 1
-sed -Ei "s/^pkgver=.+?/pkgver=$pkgver/" PKGBUILD
+checksums="$(makepkg --nocolor --geninteg -p PKGBUILD | rg --color=never -o 'sha256sums=(.+)')"
+sed -Ei "s/^sha256sums=.+?/$checksums/ ; s/^pkgver=.+?/pkgver=$pkgver/" PKGBUILD
 makepkg --printsrcinfo >.SRCINFO
 git add .
 git commit -m "build: v$pkgver"
