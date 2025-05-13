@@ -1,3 +1,5 @@
+use std::os::unix::ffi::OsStrExt;
+
 use anyhow::Context;
 use tempfile::TempDir;
 
@@ -26,8 +28,16 @@ pub fn make_tmp_tree() -> anyhow::Result<TempDir> {
         "src/test_ignore.txt",
     ];
     let temp_dir = tempfile::tempdir().context("failed to create tempdir")?;
-
-    todo!("create file structure and populate text files");
+    let root = temp_dir.path();
+    for file in &FILES_TO_CREATE {
+        let full_path = root.join(file);
+        let parent = full_path.parent().unwrap();
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create test dir '{parent:?}'"))?;
+        // use file path as file contents
+        std::fs::write(&full_path, full_path.clone().into_os_string().as_bytes())
+            .with_context(|| format!("failed to create test file '{full_path:?}'"))?;
+    }
 
     Ok(temp_dir)
 }
