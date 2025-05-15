@@ -1,20 +1,9 @@
-use std::{
-    fs, io,
-    path::{Path, PathBuf},
-    sync::LazyLock,
-};
+use std::{fmt::Display, path::PathBuf, sync::LazyLock};
 
-use anyhow::Context;
-use const_format::formatc;
-use errors::{ParseError, WriteError};
 use regex::Regex;
-use ron::ser::PrettyConfig;
 use serde::{Deserialize, Deserializer, Serialize, de::Error};
 
-use crate::{cli::BoxUnboxCli, constants::BASE_DIRS, utils::expand_into_pathbuf};
-
-pub mod errors;
-pub mod plan;
+use crate::{constants::BASE_DIRS, utils::expand_into_pathbuf};
 
 /// Utility function to deserialize a [`PathBuf`] while expanding environment variables and `~`.
 ///
@@ -49,182 +38,67 @@ fn __ignore_pats_default() -> Vec<Regex> {
     DEFAULT_REGEX_VEC.clone()
 }
 
+/// Describes what to do if a target link already exists.
+pub enum ExistingFileStrategy {
+    /// Throw an error.
+    ThrowError,
+    /// Ignore the link and continue.
+    Ignore,
+    /// Move the target link to `<target>.bak`.
+    Move,
+    /// Overwrite the target with the package version. (destructive!)
+    Overwrite,
+    /// Overwrite the package with the target version. (destructive!)
+    Adopt,
+}
+
+/// Describes what type of link to create.
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+pub enum LinkType {
+    SymlinkAbsolute,
+    SymlinkRelative,
+    HardLink,
+}
+
+impl Default for LinkType {
+    fn default() -> Self {
+        Self::SymlinkAbsolute
+    }
+}
+
+impl Display for LinkType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            LinkType::SymlinkAbsolute => "absolute symlink",
+            LinkType::SymlinkRelative => "relative symlink",
+            LinkType::HardLink => "hard link",
+        };
+        write!(f, "{s}")
+    }
+}
+
+/// A package configuration. Can de/serialize with [`serde`].
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct PackageConfig {
+    /// The path of the package this config is for. This is also the directory where the config
+    /// file is located.
     #[serde(skip)]
     pub package: PathBuf,
-    #[serde(skip)]
-    pub force: bool,
-    #[serde(skip)]
-    pub ignore_exists: bool,
-    #[serde(skip)]
-    pub perform_box: bool,
 
+    /// The target directory.
     #[serde(default = "__target_default", deserialize_with = "__de_pathbuf")]
     pub target: PathBuf,
+    /// [`Regex`]'s that determine which file names to ignore.
     #[serde(default = "__ignore_pats_default", with = "serde_regex")]
     pub ignore_pats: Vec<Regex>,
+    /// Only link the root package folder, creating one link.
     #[serde(default = "bool::default")]
     pub link_root: bool,
+    /// Do not create directories in `target`. If one does not exist, an error is thrown.
     #[serde(default = "bool::default")]
     pub no_create_dirs: bool,
-    #[serde(default = "bool::default")]
-    pub use_relative_links: bool,
-    #[serde(default = "bool::default")]
-    pub use_hard_links: bool,
-}
-
-impl TryFrom<PathBuf> for PackageConfig {
-    type Error = ParseError;
-
-    fn try_from(package: PathBuf) -> Result<Self, Self::Error> {
-        let default_rc_path = package.join(PackageConfig::__rc_file_name());
-        let os_rc_path = package.join(PackageConfig::__os_rc_file_name());
-
-        let rc_file = if os_rc_path.try_exists().unwrap_or(false) {
-            os_rc_path
-        } else if default_rc_path.try_exists().unwrap_or(false) {
-            default_rc_path
-        } else {
-            // no config found for this package
-            return Err(ParseError::ConfigNotFound(package));
-        };
-
-        #[cfg(debug_assertions)]
-        println!("reading config: {rc_file:?}");
-
-        let rc_str = fs::read_to_string(&rc_file)
-            .with_context(|| format!("failed to read file: {rc_file:?}"))?;
-
-        let mut rc: PackageConfig = ron::from_str(&rc_str)?;
-        rc.package = package;
-
-        Ok(rc)
-    }
-}
-
-impl PackageConfig {
-    /// Expected file name of the RC file.
-    const fn __rc_file_name() -> &'static str {
-        // TODO: consider allowing multiple names
-        ".unboxrc.ron"
-    }
-
-    /// Expected file name of the OS-specific RC file.
-    const fn __os_rc_file_name() -> &'static str {
-        formatc!(".unboxrc.{}.ron", std::env::consts::OS)
-    }
-
-    /// Create a new [`PackageConfig`] for the given [`package`] with default values.
-    ///
-    /// # Arguments
-    ///
-    /// - `package` - Package to make config for.
-    pub fn new<P: Into<PathBuf>>(package: P) -> Self {
-        Self {
-            package: package.into(),
-            force: false,
-            ignore_exists: false,
-            perform_box: false,
-            target: __target_default(),
-            ignore_pats: __ignore_pats_default(),
-            link_root: false,
-            no_create_dirs: false,
-            use_relative_links: false,
-            use_hard_links: false,
-        }
-    }
-
-    /// Merge with [`BoxUnboxCli`] args. Consumes this struct.
-    ///
-    /// # Arguments
-    ///
-    /// - `cli` - CLI args to merge with.
-    pub fn merge_with_cli(self, cli: &BoxUnboxCli) -> io::Result<Self> {
-        let mut ignore_pats = self.ignore_pats;
-        ignore_pats.extend(cli.ignore_pats.clone());
-
-        let conf = Self {
-            package: self.package,
-            target: cli.target.clone().map_or(Ok(self.target), |p| {
-                if p.is_relative() {
-                    p.canonicalize()
-                } else {
-                    Ok(p)
-                }
-            })?,
-            force: cli.force || self.force,
-            ignore_exists: cli.ignore_exists || self.ignore_exists,
-            ignore_pats,
-            link_root: cli.link_root || self.link_root,
-            no_create_dirs: cli.no_create_dirs || self.no_create_dirs,
-            perform_box: cli.perform_box || self.perform_box,
-            use_relative_links: self.use_relative_links || cli.use_relative_links,
-            use_hard_links: self.use_hard_links || cli.use_hard_links,
-        };
-
-        Ok(conf)
-    }
-
-    /// Try to parse [`PackageConfig`] from a given package path.
-    ///
-    /// # Arguments
-    ///
-    /// - `package` - Package [`Path`].
-    ///
-    /// # Errors
-    ///
-    /// An error is returned if:
-    ///
-    /// - The RC file doesn't exist.
-    /// - Failure to read RC file.
-    /// - Failure to parse RC file with [`ron`].
-    #[inline]
-    pub fn try_from_package<P: Into<PathBuf>>(package: P) -> Result<Self, ParseError> {
-        Self::try_from(package.into())
-    }
-
-    /// Save this [`PackageConfig`] to a `package` directory.
-    ///
-    /// # Arguments
-    ///
-    /// - `package` - Package to save this config to.
-    /// - `use_os` - Save as an OS-specific config. See [`std::env::consts::OS`].
-    ///
-    /// # Errors
-    ///
-    /// An error is returned if:
-    ///
-    /// - This struct fails to serialize into RON.
-    /// - The file cannot be created/written to
-    pub fn save_to_package<P: AsRef<Path>>(
-        &self,
-        package: P,
-        use_os: bool,
-    ) -> Result<(), WriteError> {
-        let mut clone_self = self.clone();
-        let home_dir = BASE_DIRS.home_dir();
-
-        if let Ok(path) = clone_self.target.strip_prefix(home_dir) {
-            clone_self.target = PathBuf::from("~/").join(path);
-        }
-
-        let package = package.as_ref();
-        let rc_file = if use_os {
-            package.join(PackageConfig::__os_rc_file_name())
-        } else {
-            package.join(PackageConfig::__rc_file_name())
-        };
-
-        #[cfg(debug_assertions)]
-        println!("saving config to {rc_file:?}");
-
-        // WARN: this overwrites the existing file, be careful!
-        let ron_str =
-            ron::ser::to_string_pretty(&clone_self, PrettyConfig::new().struct_names(true))?;
-        fs::write(rc_file, ron_str)?;
-
-        Ok(())
-    }
+    /// What type of link to create.
+    #[serde(default = "LinkType::default")]
+    pub link_type: LinkType,
 }
