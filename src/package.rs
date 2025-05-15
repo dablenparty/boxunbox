@@ -5,6 +5,8 @@ use serde::{Deserialize, Deserializer, Serialize, de::Error};
 
 use crate::{constants::BASE_DIRS, utils::expand_into_pathbuf};
 
+pub mod error;
+
 /// Utility function to deserialize a [`PathBuf`] while expanding environment variables and `~`.
 ///
 /// # Arguments
@@ -101,4 +103,62 @@ pub struct PackageConfig {
     /// What type of link to create.
     #[serde(default = "LinkType::default")]
     pub link_type: LinkType,
+}
+
+impl PackageConfig {
+    /// File name this struct will serialize to by default.
+    const fn __serde_file_name() -> &'static str {
+        ".bub.toml"
+    }
+
+    /// Create a new [`PackageConfig`] from the given `package` and `target` paths and default
+    /// values for everything else.
+    ///
+    /// # Arguments
+    ///
+    /// - `package` - The package directory to create a config for.
+    /// - `target` - The target directory of the new config.
+    pub fn new<P: Into<PathBuf>, Q: Into<PathBuf>>(package: P, target: Q) -> Self {
+        Self {
+            package: package.into(),
+            target: target.into(),
+            ignore_pats: __ignore_pats_default(),
+            link_root: bool::default(),
+            no_create_dirs: bool::default(),
+            link_type: LinkType::default(),
+        }
+    }
+
+    /// Try to read a config file from the given `package` directory.
+    ///
+    /// # Arguments
+    ///
+    /// - `package` - Directory to read from
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if the config file does not exist, cannot be read, or contains
+    /// malformed TOML data.
+    #[inline]
+    pub fn try_from_package<P: Into<PathBuf>>(package: P) -> Result<Self, error::Error> {
+        Self::try_from(package.into())
+    }
+}
+
+impl TryFrom<PathBuf> for PackageConfig {
+    type Error = error::Error;
+
+    fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
+        let config_path = value.join(Self::__serde_file_name());
+
+        let config_str =
+            &std::fs::read_to_string(&config_path).map_err(|err| error::Error::IoError {
+                source: err,
+                path: config_path,
+            })?;
+        let mut parsed_config: Self = toml::from_str(config_str)?;
+        parsed_config.package = value;
+
+        Ok(parsed_config)
+    }
 }
