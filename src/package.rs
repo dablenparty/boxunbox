@@ -16,7 +16,8 @@ fn __de_pathbuf<'de, D>(d: D) -> Result<PathBuf, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let s: &str = Deserialize::deserialize(d)?;
+    // NOTE: don't use &str or deserializing will fail for strings
+    let s: String = Deserialize::deserialize(d)?;
     expand_into_pathbuf(s).map_err(D::Error::custom)
 }
 
@@ -55,7 +56,7 @@ pub enum ExistingFileStrategy {
 }
 
 /// Describes what type of link to create.
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum LinkType {
     SymlinkAbsolute,
     SymlinkRelative,
@@ -140,19 +141,42 @@ impl PackageConfig {
     /// An error will be returned if the config file does not exist, cannot be read, or contains
     /// malformed TOML data.
     #[inline]
-    pub fn try_from_package<P: Into<PathBuf>>(package: P) -> Result<Self, error::Error> {
+    pub fn try_from_package<P: Into<PathBuf>>(package: P) -> Result<Self, error::ReadError> {
         Self::try_from(package.into())
+    }
+
+    /// Get the disk path for this `PackageConfig`.
+    #[inline]
+    fn disk_path(&self) -> PathBuf {
+        self.package.join(PackageConfig::__serde_file_name())
+    }
+
+    /// Save this `PackageConfig` to a package directory.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if the config fails to serialize or the file cannot be
+    /// written to for some reason.
+    pub fn save_to_package(&self) -> Result<(), error::WriteError> {
+        let config_path = self.disk_path();
+        let config_str = toml::to_string_pretty(self)?;
+        // WARN: this truncates the existing file. be careful!
+        std::fs::write(&config_path, config_str).map_err(|err| error::WriteError::IoError {
+            source: err,
+            path: config_path,
+        })?;
+        Ok(())
     }
 }
 
 impl TryFrom<PathBuf> for PackageConfig {
-    type Error = error::Error;
+    type Error = error::ReadError;
 
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
         let config_path = value.join(Self::__serde_file_name());
 
         let config_str =
-            &std::fs::read_to_string(&config_path).map_err(|err| error::Error::IoError {
+            &std::fs::read_to_string(&config_path).map_err(|err| error::ReadError::IoError {
                 source: err,
                 path: config_path,
             })?;
@@ -160,5 +184,85 @@ impl TryFrom<PathBuf> for PackageConfig {
         parsed_config.package = value;
 
         Ok(parsed_config)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::os::unix::ffi::OsStrExt;
+
+    use anyhow::Context;
+    use tempfile::TempDir;
+
+    use super::*;
+
+    /// Creates a new temporary file tree for use in integration tests. Each call to this function will
+    /// create a _new_ temporary directory; however, every directory will have the same structure:
+    ///
+    /// ```text
+    /// <tempdir>
+    /// └── src
+    ///     ├── folder1
+    ///     │   ├── nested1.txt
+    ///     │   └── test_ignore2.txt
+    ///     ├── folder2
+    ///     │   ├── nested2.txt
+    ///     │   └── 'nested2 again.txt'
+    ///     ├── test.txt
+    ///     └── test_ignore.txt
+    /// ```
+    fn make_tmp_tree() -> anyhow::Result<TempDir> {
+        const FILES_TO_CREATE: [&str; 6] = [
+            "src/folder1/nested1.txt",
+            "src/folder1/test_ignore2.txt",
+            "src/folder2/nested2.txt",
+            "src/folder2/nested2 again.txt",
+            "src/test.txt",
+            "src/test_ignore.txt",
+        ];
+
+        let temp_dir = tempfile::tempdir().context("failed to create tempdir")?;
+        let root = temp_dir.path();
+        for file in &FILES_TO_CREATE {
+            let full_path = root.join(file);
+            let parent = full_path.parent().unwrap();
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("failed to create test dir '{parent:?}'"))?;
+            // use file path as file contents
+            std::fs::write(&full_path, full_path.clone().into_os_string().as_bytes())
+                .with_context(|| format!("failed to create test file '{full_path:?}'"))?;
+        }
+
+        // create demo config with home dir as target
+        let conf = PackageConfig::new(root, BASE_DIRS.home_dir());
+        conf.save_to_package()
+            .context("failed to save test config")?;
+
+        Ok(temp_dir)
+    }
+
+    #[test]
+    fn test_try_from_package() -> anyhow::Result<()> {
+        let package = make_tmp_tree().context("failed to make test package")?;
+        let package_path = package.path();
+        let conf = PackageConfig::try_from_package(package_path)
+            .context("failed to create package config from package")?;
+
+        assert_eq!(conf.package, package_path);
+        assert_eq!(conf.target, BASE_DIRS.home_dir());
+        let expected_ignore_pats = __ignore_pats_default();
+        assert!(
+            conf.ignore_pats.len() == expected_ignore_pats.len()
+                && conf
+                    .ignore_pats
+                    .iter()
+                    .zip(expected_ignore_pats)
+                    .all(|(a, b)| a.as_str() == b.as_str())
+        );
+        assert!(!conf.link_root);
+        assert!(!conf.no_create_dirs);
+        assert_eq!(conf.link_type, LinkType::SymlinkAbsolute);
+
+        Ok(())
     }
 }
