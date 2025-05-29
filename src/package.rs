@@ -160,7 +160,7 @@ impl PackageConfig {
     /// malformed TOML data.
     #[inline]
     pub fn try_from_package<P: Into<PathBuf>>(package: P) -> Result<Self, error::ReadError> {
-        Self::try_from(package.into())
+        Self::try_from(package.into().join(Self::__serde_file_name()))
     }
 
     /// Get the disk path for this `PackageConfig`.
@@ -191,15 +191,18 @@ impl TryFrom<PathBuf> for PackageConfig {
     type Error = error::ReadError;
 
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
-        let config_path = value.join(Self::__serde_file_name());
+        let config_path = value;
 
         let config_str =
             &std::fs::read_to_string(&config_path).map_err(|err| error::ReadError::IoError {
                 source: err,
-                path: config_path,
+                path: config_path.clone(),
             })?;
         let mut parsed_config: Self = toml::from_str(config_str)?;
-        parsed_config.package = value;
+        parsed_config.package = config_path
+            .parent()
+            .unwrap_or_else(|| panic!("file '{}' has no parent", config_path.display()))
+            .to_path_buf();
 
         Ok(parsed_config)
     }
