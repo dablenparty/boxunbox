@@ -80,6 +80,24 @@ impl Display for LinkType {
     }
 }
 
+impl PartialEq for PackageConfig {
+    fn eq(&self, other: &Self) -> bool {
+        self.package == other.package
+            && self.target == other.target
+            && self.ignore_pats.len() == other.ignore_pats.len()
+            && self
+                .ignore_pats
+                .iter()
+                .zip(&other.ignore_pats)
+                .all(|(l, r)| l.as_str() == r.as_str())
+            && self.link_root == other.link_root
+            && self.no_create_dirs == other.no_create_dirs
+            && self.link_type == other.link_type
+    }
+}
+
+impl Eq for PackageConfig {}
+
 /// A package configuration. Can de/serialize with [`serde`].
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[allow(clippy::struct_excessive_bools)]
