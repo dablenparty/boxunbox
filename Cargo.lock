@@ -217,9 +217,9 @@ dependencies = [
 
 [[package]]
 name = "expandenv"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2abf9f4aaa2d40ebe7d23d69a8267c672aa8892e77ba155fd2363b9d888094e"
+checksum = "abc32fb369b28271dd38c45732c738f56da1e64ec1b98505a356cb95608dad6b"
 dependencies = [
  "anyhow",
  "directories-next",

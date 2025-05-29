@@ -19,7 +19,7 @@ clap = { version = "4.5.31", features = ["derive", "cargo", "unicode"] }
 colored = "3.0.0"
 const_format = { version = "0.2.34", features = ["fmt"] }
 directories-next = "2.0.0"
-expandenv = "0.1.0"
+expandenv = "0.1.1"
 path-clean = "1.0.1"
 pathdiff = "0.2.3"
 regex = "1.11.1"
