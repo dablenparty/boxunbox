@@ -265,4 +265,30 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_save_to_package() -> anyhow::Result<()> {
+        let package = tempfile::tempdir().context("failed to make test package")?;
+        let conf = PackageConfig::new(package.path(), BASE_DIRS.home_dir());
+        conf.save_to_package()
+            .context("failed to save config to test package")?;
+        let conf_path = package.path().join(PackageConfig::__serde_file_name());
+        let expected_conf_str =
+            toml::to_string_pretty(&conf).context("failed to serialize test config")?;
+        let actual_conf_str =
+            std::fs::read_to_string(&conf_path).context("failed to read test config")?;
+
+        assert!(
+            conf_path
+                .try_exists()
+                .context("failed to verify existence of test config")?,
+            "test config file could not be found"
+        );
+        assert_eq!(
+            expected_conf_str, actual_conf_str,
+            "contents of test config file do not match serialized test config"
+        );
+
+        Ok(())
+    }
 }
