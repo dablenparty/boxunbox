@@ -231,12 +231,12 @@ mod tests {
     /// ```
     fn make_tmp_tree() -> anyhow::Result<TempDir> {
         const FILES_TO_CREATE: [&str; 6] = [
-            "src/folder1/nested1.txt",
-            "src/folder1/test_ignore2.txt",
-            "src/folder2/nested2.txt",
-            "src/folder2/nested2 again.txt",
-            "src/test.txt",
-            "src/test_ignore.txt",
+            "folder1/nested1.txt",
+            "folder1/test_ignore2.txt",
+            "folder2/nested2.txt",
+            "folder2/nested2 again.txt",
+            "test.txt",
+            "test_ignore.txt",
         ];
 
         let temp_dir = tempfile::tempdir().context("failed to create tempdir")?;
