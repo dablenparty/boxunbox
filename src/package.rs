@@ -160,6 +160,7 @@ impl PackageConfig {
     /// malformed TOML data.
     #[inline]
     pub fn try_from_package<P: Into<PathBuf>>(package: P) -> Result<Self, error::ReadError> {
+        // TODO: if old config exists (.unboxrc.ron), replace it with a toml file
         Self::try_from(package.into().join(Self::__serde_file_name()))
     }
 
