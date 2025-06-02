@@ -4,9 +4,14 @@ use std::path::Path;
 
 use clap::Parser;
 use cli::{BoxUnboxCli, ColorOverride};
+use colored::Colorize;
+use constants::BASE_DIRS;
+use error::UnboxError;
+use package::{OldPackageConfig, PackageConfig};
 
 mod cli;
 mod constants;
+mod error;
 mod package;
 mod utils;
 
@@ -15,7 +20,33 @@ mod utils;
 /// # Arguments
 ///
 /// - `package` - Package directory to unbox.
-fn unbox(package: &Path) {
+fn unbox(package: &Path) -> Result<(), UnboxError> {
+    let config = match PackageConfig::try_from_package(package) {
+        Ok(config) => config,
+        Err(package::error::ConfigRead::FileNotFound(path_buf)) => {
+            // TODO: Remove this conversion eventually
+            match OldPackageConfig::try_from(package.to_path_buf()) {
+                Ok(old_config) => {
+                    eprintln!(
+                        "{}: {} not found, checking for old config...",
+                        "warn".yellow(),
+                        path_buf.display()
+                    );
+
+                    PackageConfig::from_old_package(package, old_config)
+                }
+                Err(err) => {
+                    eprintln!("{}: error reading old config: {err}", "warn".yellow());
+                    PackageConfig::new(package, BASE_DIRS.home_dir())
+                }
+            }
+        }
+        Err(err) => return Err(err.into()),
+    };
+
+    #[cfg(debug_assertions)]
+    println!("{config:#?}");
+
     todo!()
 }
 
@@ -38,6 +69,12 @@ fn main() {
     }
 
     for package in &packages {
-        unbox(package);
+        if let Err(err) = unbox(package) {
+            eprintln!(
+                "{}: failed to unbox {}: {err}",
+                "err".bright_red(),
+                package.display()
+            );
+        }
     }
 }

@@ -11,8 +11,10 @@ pub enum ConfigRead {
         source: std::io::Error,
         path: PathBuf,
     },
-    #[error("failed to deserialize TOML: {0}")]
+    #[error("failed to parse TOML config: {0}")]
     Toml(#[from] toml::de::Error),
+    #[error("failed to parse RON config: {0}")]
+    Ron(#[from] ron::error::SpannedError),
 }
 
 #[derive(Debug, ThisError)]

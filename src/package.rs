@@ -1,5 +1,6 @@
 use std::{fmt::Display, path::PathBuf, sync::LazyLock};
 
+use const_format::formatc;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, de::Error};
 
@@ -100,7 +101,6 @@ impl Eq for PackageConfig {}
 
 /// A package configuration. Can de/serialize with [`serde`].
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[allow(clippy::struct_excessive_bools)]
 pub struct PackageConfig {
     /// The path of the package this config is for. This is also the directory where the config
     /// file is located.
@@ -122,6 +122,24 @@ pub struct PackageConfig {
     /// What type of link to create.
     #[serde(default = "LinkType::default")]
     pub link_type: LinkType,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[warn(deprecated_in_future)]
+#[allow(clippy::struct_excessive_bools)]
+pub struct OldPackageConfig {
+    #[serde(default = "__target_default", deserialize_with = "__de_pathbuf")]
+    pub target: PathBuf,
+    #[serde(default = "__ignore_pats_default", with = "serde_regex")]
+    pub ignore_pats: Vec<Regex>,
+    #[serde(default = "bool::default")]
+    pub link_root: bool,
+    #[serde(default = "bool::default")]
+    pub no_create_dirs: bool,
+    #[serde(default = "bool::default")]
+    pub use_relative_links: bool,
+    #[serde(default = "bool::default")]
+    pub use_hard_links: bool,
 }
 
 impl PackageConfig {
@@ -161,9 +179,26 @@ impl PackageConfig {
     #[inline]
     pub fn try_from_package<P: Into<PathBuf>>(package: P) -> Result<Self, error::ConfigRead> {
         // TODO: if old config exists (.unboxrc.ron), replace it with a toml file
-        Self::try_from(package.into().join(Self::__serde_file_name()))
+        let package = package.into();
+        let toml_path = package.join(Self::__serde_file_name());
+        Self::try_from(toml_path)
     }
 
+    #[warn(deprecated_in_future)]
+    pub fn from_old_package<P: Into<PathBuf>>(package: P, value: OldPackageConfig) -> Self {
+        Self {
+            package: package.into(),
+            target: value.target,
+            ignore_pats: value.ignore_pats,
+            link_root: value.link_root,
+            no_create_dirs: value.no_create_dirs,
+            link_type: match (value.use_relative_links, value.use_hard_links) {
+                (_, true) => LinkType::HardLink,
+                (false, false) => LinkType::SymlinkAbsolute,
+                (true, false) => LinkType::SymlinkRelative,
+            },
+        }
+    }
     /// Get the disk path for this `PackageConfig`.
     #[inline]
     fn disk_path(&self) -> PathBuf {
@@ -216,6 +251,63 @@ impl TryFrom<PathBuf> for PackageConfig {
             .to_path_buf();
 
         Ok(parsed_config)
+    }
+}
+
+impl OldPackageConfig {
+    /// Expected file name of the RC file.
+    const fn __rc_file_name() -> &'static str {
+        // TODO: consider allowing multiple names
+        ".unboxrc.ron"
+    }
+
+    /// Expected file name of the OS-specific RC file.
+    const fn __os_rc_file_name() -> &'static str {
+        formatc!(".unboxrc.{}.ron", std::env::consts::OS)
+    }
+}
+
+#[cfg(test)]
+impl Default for OldPackageConfig {
+    fn default() -> Self {
+        Self {
+            target: __target_default(),
+            ignore_pats: __ignore_pats_default(),
+            link_root: false,
+            no_create_dirs: false,
+            use_relative_links: false,
+            use_hard_links: false,
+        }
+    }
+}
+
+impl TryFrom<PathBuf> for OldPackageConfig {
+    type Error = error::ConfigRead;
+
+    fn try_from(package: PathBuf) -> Result<Self, Self::Error> {
+        let default_rc_path = package.join(OldPackageConfig::__rc_file_name());
+        let os_rc_path = package.join(OldPackageConfig::__os_rc_file_name());
+
+        let rc_file = if os_rc_path.try_exists().unwrap_or(false) {
+            os_rc_path
+        } else if default_rc_path.try_exists().unwrap_or(false) {
+            default_rc_path
+        } else {
+            // no config found for this package
+            return Err(error::ConfigRead::FileNotFound(package));
+        };
+
+        #[cfg(debug_assertions)]
+        println!("reading config: {}", rc_file.display());
+
+        let rc_str = std::fs::read_to_string(&rc_file).map_err(|err| error::ConfigRead::Io {
+            source: err,
+            path: rc_file.clone(),
+        })?;
+
+        let rc: OldPackageConfig = ron::from_str(&rc_str)?;
+
+        Ok(rc)
     }
 }
 
@@ -320,6 +412,19 @@ mod tests {
             expected_conf_str, actual_conf_str,
             "contents of test config file do not match serialized test config"
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_from_old_package() -> anyhow::Result<()> {
+        let package = make_tmp_tree().context("failed to make test package")?;
+        let package_path = package.path();
+        let old_config = OldPackageConfig::default();
+        let expected = PackageConfig::new(package_path, __target_default());
+        let actual = PackageConfig::from_old_package(package_path, old_config);
+
+        assert_eq!(expected, actual);
 
         Ok(())
     }
