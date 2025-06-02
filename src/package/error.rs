@@ -3,23 +3,23 @@ use std::path::PathBuf;
 use thiserror::Error as ThisError;
 
 #[derive(Debug, ThisError)]
-pub enum ReadError {
+pub enum ConfigRead {
     #[error("failed to read '{path}': {source}")]
-    IoError {
+    Io {
         source: std::io::Error,
         path: PathBuf,
     },
     #[error("failed to deserialize TOML: {0}")]
-    TomlError(#[from] toml::de::Error),
+    Toml(#[from] toml::de::Error),
 }
 
 #[derive(Debug, ThisError)]
-pub enum WriteError {
+pub enum ConfigWrite {
     #[error("failed to write to '{path}': {source}")]
-    IoError {
+    Io {
         source: std::io::Error,
         path: PathBuf,
     },
     #[error("failed to serialize to TOML: {0}")]
-    TomlError(#[from] toml::ser::Error),
+    Toml(#[from] toml::ser::Error),
 }

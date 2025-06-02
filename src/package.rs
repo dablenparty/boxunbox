@@ -159,7 +159,7 @@ impl PackageConfig {
     /// An error will be returned if the config file does not exist, cannot be read, or contains
     /// malformed TOML data.
     #[inline]
-    pub fn try_from_package<P: Into<PathBuf>>(package: P) -> Result<Self, error::ReadError> {
+    pub fn try_from_package<P: Into<PathBuf>>(package: P) -> Result<Self, error::ConfigRead> {
         // TODO: if old config exists (.unboxrc.ron), replace it with a toml file
         Self::try_from(package.into().join(Self::__serde_file_name()))
     }
@@ -176,11 +176,11 @@ impl PackageConfig {
     ///
     /// An error will be returned if the config fails to serialize or the file cannot be
     /// written to for some reason.
-    pub fn save_to_package(&self) -> Result<(), error::WriteError> {
+    pub fn save_to_package(&self) -> Result<(), error::ConfigWrite> {
         let config_path = self.disk_path();
         let config_str = toml::to_string_pretty(self)?;
         // WARN: this truncates the existing file. be careful!
-        std::fs::write(&config_path, config_str).map_err(|err| error::WriteError::IoError {
+        std::fs::write(&config_path, config_str).map_err(|err| error::ConfigWrite::Io {
             source: err,
             path: config_path,
         })?;
@@ -189,13 +189,13 @@ impl PackageConfig {
 }
 
 impl TryFrom<PathBuf> for PackageConfig {
-    type Error = error::ReadError;
+    type Error = error::ConfigRead;
 
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
         let config_path = value;
 
         let config_str =
-            &std::fs::read_to_string(&config_path).map_err(|err| error::ReadError::IoError {
+            &std::fs::read_to_string(&config_path).map_err(|err| error::ConfigRead::Io {
                 source: err,
                 path: config_path.clone(),
             })?;
