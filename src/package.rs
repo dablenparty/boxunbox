@@ -194,6 +194,16 @@ impl TryFrom<PathBuf> for PackageConfig {
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
         let config_path = value;
 
+        if !config_path
+            .try_exists()
+            .map_err(|err| error::ConfigRead::Io {
+                source: err,
+                path: config_path.clone(),
+            })?
+        {
+            return Err(error::ConfigRead::FileNotFound(config_path));
+        }
+
         let config_str =
             &std::fs::read_to_string(&config_path).map_err(|err| error::ConfigRead::Io {
                 source: err,

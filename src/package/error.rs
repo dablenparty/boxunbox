@@ -4,6 +4,8 @@ use thiserror::Error as ThisError;
 
 #[derive(Debug, ThisError)]
 pub enum ConfigRead {
+    #[error("config file does not exist: {0}")]
+    FileNotFound(PathBuf),
     #[error("failed to read '{path}': {source}")]
     Io {
         source: std::io::Error,
