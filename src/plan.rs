@@ -91,10 +91,7 @@ pub fn plan_unboxing(
 mod tests {
     use anyhow::Context;
 
-    use crate::{
-        constants::BASE_DIRS,
-        test_utils::{TEST_PACKAGE_FILE_TAILS, make_tmp_tree},
-    };
+    use crate::test_utils::{TEST_PACKAGE_FILE_TAILS, TEST_TARGET, make_tmp_tree};
 
     use super::*;
 
@@ -106,11 +103,12 @@ mod tests {
         let config = PackageConfig::init(package_path, &cli)
             .context("failed to create test package config")?;
 
+        let expected_target = PathBuf::from(TEST_TARGET);
         let expected_plan = TEST_PACKAGE_FILE_TAILS
             .iter()
             .map(|tail| PlannedLink {
                 src: package_path.join(tail),
-                dest: BASE_DIRS.home_dir().join(tail),
+                dest: expected_target.join(tail),
                 ty: LinkType::SymlinkAbsolute,
             })
             .collect::<Vec<_>>();

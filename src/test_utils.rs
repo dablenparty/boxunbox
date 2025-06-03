@@ -1,9 +1,11 @@
 #![cfg(test)]
 
+use std::path::PathBuf;
+
 use anyhow::Context;
 use tempfile::TempDir;
 
-use crate::{constants::BASE_DIRS, package::PackageConfig};
+use crate::package::PackageConfig;
 
 pub const TEST_PACKAGE_FILE_TAILS: [&str; 6] = [
     "folder1/nested1.txt",
@@ -14,20 +16,21 @@ pub const TEST_PACKAGE_FILE_TAILS: [&str; 6] = [
     "test_ignore.txt",
 ];
 
+pub const TEST_TARGET: &str = "/path/to/test/target";
+
 /// Creates a new temporary file tree for use in integration tests. Each call to this function will
 /// create a _new_ temporary directory; however, every directory will have the same structure:
 ///
 /// ```text
 /// <tempdir>
-/// └── src
-///     ├── folder1
-///     │   ├── nested1.txt
-///     │   └── test_ignore2.txt
-///     ├── folder2
-///     │   ├── nested2.txt
-///     │   └── 'nested2 again.txt'
-///     ├── test.txt
-///     └── test_ignore.txt
+/// ├── folder1
+/// │   ├── nested1.txt
+/// │   └── test_ignore2.txt
+/// ├── folder2
+/// │   ├── nested2.txt
+/// │   └── 'nested2 again.txt'
+/// ├── test.txt
+/// └── test_ignore.txt
 /// ```
 pub fn make_tmp_tree() -> anyhow::Result<TempDir> {
     let temp_dir = tempfile::tempdir().context("failed to create tempdir")?;
@@ -43,7 +46,7 @@ pub fn make_tmp_tree() -> anyhow::Result<TempDir> {
     }
 
     // create demo config with home dir as target
-    let conf = PackageConfig::new(root, BASE_DIRS.home_dir());
+    let conf = PackageConfig::new(root, PathBuf::from(TEST_TARGET));
     conf.save_to_package()
         .context("failed to save test config")?;
 

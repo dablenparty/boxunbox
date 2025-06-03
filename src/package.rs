@@ -25,8 +25,14 @@ where
 
 /// Utility function returning the default value for [`PackageConfig::target`], which is the users
 /// home directory.
+#[cfg(not(test))]
 fn __target_default() -> PathBuf {
     BASE_DIRS.home_dir().to_path_buf()
+}
+
+#[cfg(test)]
+fn __target_default() -> PathBuf {
+    PathBuf::from(crate::test_utils::TEST_TARGET)
 }
 
 /// Utility function returning the default value for [`PackageConfig::ignore_pats`], which is a
@@ -335,7 +341,7 @@ impl TryFrom<PathBuf> for OldPackageConfig {
 mod tests {
     use anyhow::Context;
 
-    use crate::test_utils::make_tmp_tree;
+    use crate::test_utils::{TEST_TARGET, make_tmp_tree};
 
     use super::*;
 
@@ -347,7 +353,7 @@ mod tests {
             .context("failed to create package config from package")?;
 
         assert_eq!(conf.package, package_path);
-        assert_eq!(conf.target, BASE_DIRS.home_dir());
+        assert_eq!(conf.target, PathBuf::from(TEST_TARGET));
         let expected_ignore_pats = __ignore_pats_default();
         assert!(
             conf.ignore_pats.len() == expected_ignore_pats.len()
@@ -402,7 +408,7 @@ mod tests {
     #[test]
     fn test_save_to_package() -> anyhow::Result<()> {
         let package = tempfile::tempdir().context("failed to make test package")?;
-        let conf = PackageConfig::new(package.path(), BASE_DIRS.home_dir());
+        let conf = PackageConfig::new(package.path(), __target_default());
         conf.save_to_package()
             .context("failed to save config to test package")?;
         let conf_path = package.path().join(PackageConfig::__serde_file_name());
