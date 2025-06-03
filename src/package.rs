@@ -174,24 +174,33 @@ impl PackageConfig {
     ///
     /// An error will be returned if the config file does not exist, cannot be read, or contains
     /// malformed TOML data.
-    pub fn try_from_package<P: Into<PathBuf>>(
-        package: P,
-        cli: &BoxUnboxCli,
-    ) -> Result<Self, error::ConfigRead> {
+    pub fn try_from_package<P: Into<PathBuf>>(package: P) -> Result<Self, error::ConfigRead> {
         // TODO: if old config exists (.unboxrc.ron), replace it with a toml file
         let package = package.into();
         let toml_path = package.join(Self::__serde_file_name());
-        let mut config = Self::try_from(toml_path)?;
-        config.ignore_pats.extend_from_slice(&cli.ignore_pats[..]);
-        config.link_root |= cli.link_root;
-        if let Some(link_type) = cli.link_type {
-            config.link_type = link_type;
-        }
-        if let Some(target) = cli.target.as_ref() {
-            config.target.clone_from(target);
-        }
+        Self::try_from(toml_path)
+    }
+
+    pub fn init<P: Into<PathBuf>>(
+        package: P,
+        cli: &BoxUnboxCli,
+    ) -> Result<Self, error::ConfigRead> {
+        let package = package.into();
+        let mut config = Self::try_from_package(package)?;
+        config.merge_with_cli(cli);
 
         Ok(config)
+    }
+
+    fn merge_with_cli(&mut self, cli: &BoxUnboxCli) {
+        self.ignore_pats.extend_from_slice(&cli.ignore_pats[..]);
+        self.link_root |= cli.link_root;
+        if let Some(link_type) = cli.link_type {
+            self.link_type = link_type;
+        }
+        if let Some(target) = cli.target.as_ref() {
+            self.target.clone_from(target);
+        }
     }
 
     #[warn(deprecated_in_future)]
@@ -333,9 +342,7 @@ mod tests {
     fn test_try_from_package() -> anyhow::Result<()> {
         let package = make_tmp_tree().context("failed to make test package")?;
         let package_path = package.path();
-        let cli = BoxUnboxCli::new(package_path);
-
-        let conf = PackageConfig::try_from_package(package_path, &cli)
+        let conf = PackageConfig::try_from_package(package_path)
             .context("failed to create package config from package")?;
 
         assert_eq!(conf.package, package_path);
@@ -356,7 +363,7 @@ mod tests {
     }
 
     #[test]
-    fn test_try_from_package_respects_cli() -> anyhow::Result<()> {
+    fn test_init() -> anyhow::Result<()> {
         let package = make_tmp_tree().context("failed to make test package")?;
         let package_path = package.path();
         let mut cli = BoxUnboxCli::new(package_path);
@@ -368,7 +375,7 @@ mod tests {
         let expected_target = PathBuf::from("/path/to/test/target");
         cli.target = Some(expected_target.clone());
 
-        let conf = PackageConfig::try_from_package(package_path, &cli)
+        let conf = PackageConfig::init(package_path, &cli)
             .context("failed to create package config from package")?;
 
         assert_eq!(conf.package, package_path);

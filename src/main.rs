@@ -13,6 +13,7 @@ mod cli;
 mod constants;
 mod error;
 mod package;
+mod plan;
 mod utils;
 
 mod test_utils;
@@ -23,7 +24,7 @@ mod test_utils;
 ///
 /// - `package` - Package directory to unbox.
 fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
-    let config = match PackageConfig::try_from_package(package, cli) {
+    let config = match PackageConfig::init(package, cli) {
         Ok(config) => config,
         Err(package::error::ConfigRead::FileNotFound(path_buf)) => {
             // TODO: Remove this conversion eventually
