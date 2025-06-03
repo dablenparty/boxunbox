@@ -22,8 +22,8 @@ pub fn plan_unboxing(
     let mut walker = walkdir::WalkDir::new(config_stack[0].package.clone())
         .sort_by_file_name()
         .into_iter();
-    // skip root
-    let _ = walker.next();
+    // don't process root package, although keep it for later
+    let root_entry = walker.next().expect("walker should contain root entry")?;
     while let Some(res) = walker.next() {
         let entry = res?;
         let file_name = entry.file_name().to_string_lossy();
@@ -67,14 +67,15 @@ pub fn plan_unboxing(
             .expect("config_stack should not be empty");
 
         let PackageConfig {
-            package,
-            target,
-            link_type,
-            ..
+            target, link_type, ..
         } = current_config;
 
+        // don't use nested package to strip prefix or else the files will not be placed in
+        // the correct target directory.
+        // strip_prefix with root package: <target>/folder1/nested1.txt
+        // strip_prefix with nested package: <target>/nested1.txt
         let path_tail = entry_path
-            .strip_prefix(package)
+            .strip_prefix(root_entry.path())
             .expect("entry_path should be prefixed by package");
 
         targets.push(PlannedLink {
