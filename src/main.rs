@@ -15,6 +15,8 @@ mod error;
 mod package;
 mod utils;
 
+mod test_utils;
+
 /// Unbox the package.
 ///
 /// # Arguments
