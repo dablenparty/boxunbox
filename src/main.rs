@@ -20,8 +20,8 @@ mod utils;
 /// # Arguments
 ///
 /// - `package` - Package directory to unbox.
-fn unbox(package: &Path) -> Result<(), UnboxError> {
-    let config = match PackageConfig::try_from_package(package) {
+fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
+    let config = match PackageConfig::try_from_package(package, cli) {
         Ok(config) => config,
         Err(package::error::ConfigRead::FileNotFound(path_buf)) => {
             // TODO: Remove this conversion eventually
@@ -57,7 +57,7 @@ fn main() {
     println!("cli={cli:#?}");
 
     let BoxUnboxCli {
-        packages,
+        ref packages,
         color_override,
         ..
     } = cli;
@@ -68,8 +68,8 @@ fn main() {
         ColorOverride::Never => colored::control::set_override(false),
     }
 
-    for package in &packages {
-        if let Err(err) = unbox(package) {
+    for package in packages {
+        if let Err(err) = unbox(package, &cli) {
             eprintln!(
                 "{}: failed to unbox {}: {err}",
                 "err".bright_red(),

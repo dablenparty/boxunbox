@@ -88,3 +88,21 @@ pub struct BoxUnboxCli {
     #[arg(short, long, value_parser = cli_parse_pathbuf, value_hint = ValueHint::DirPath)]
     pub target: Option<PathBuf>,
 }
+
+#[cfg(test)]
+impl BoxUnboxCli {
+    pub(crate) fn new<P: Into<PathBuf>>(package: P) -> Self {
+        Self {
+            packages: vec![package.into()],
+            color_override: ColorOverride::default(),
+            dry_run: false,
+            ignore_pats: Vec::new(),
+            link_root: false,
+            link_type: None,
+            no_create_dirs: false,
+            save_config: false,
+            save_os_config: false,
+            target: None,
+        }
+    }
+}

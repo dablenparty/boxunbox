@@ -1,10 +1,11 @@
 use std::{fmt::Display, path::PathBuf, sync::LazyLock};
 
+use clap::ValueEnum;
 use const_format::formatc;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, de::Error};
 
-use crate::{constants::BASE_DIRS, utils::expand_into_pathbuf};
+use crate::{cli::BoxUnboxCli, constants::BASE_DIRS, utils::expand_into_pathbuf};
 
 pub mod error;
 
@@ -57,7 +58,7 @@ pub enum ExistingFileStrategy {
 }
 
 /// Describes what type of link to create.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, ValueEnum)]
 pub enum LinkType {
     SymlinkAbsolute,
     SymlinkRelative,
@@ -166,22 +167,37 @@ impl PackageConfig {
         }
     }
 
-    /// Try to read a config file from the given `package` directory.
+    /// Try to read a config file from the given `package` directory. Package options are
+    /// merged with [`BoxUnboxCli`] flags of the same name.
     ///
     /// # Arguments
     ///
     /// - `package` - Directory to read from
+    /// - `cli` - CLI options
     ///
     /// # Errors
     ///
     /// An error will be returned if the config file does not exist, cannot be read, or contains
     /// malformed TOML data.
-    #[inline]
-    pub fn try_from_package<P: Into<PathBuf>>(package: P) -> Result<Self, error::ConfigRead> {
+    pub fn try_from_package<P: Into<PathBuf>>(
+        package: P,
+        cli: &BoxUnboxCli,
+    ) -> Result<Self, error::ConfigRead> {
         // TODO: if old config exists (.unboxrc.ron), replace it with a toml file
         let package = package.into();
         let toml_path = package.join(Self::__serde_file_name());
-        Self::try_from(toml_path)
+        let mut config = Self::try_from(toml_path)?;
+        config.ignore_pats.extend_from_slice(&cli.ignore_pats[..]);
+        config.link_root |= cli.link_root;
+        if let Some(link_type) = cli.link_type {
+            config.link_type = link_type;
+        }
+        config.no_create_dirs |= cli.no_create_dirs;
+        if let Some(target) = cli.target.as_ref() {
+            config.target.clone_from(target);
+        }
+
+        Ok(config)
     }
 
     #[warn(deprecated_in_future)]
@@ -199,6 +215,7 @@ impl PackageConfig {
             },
         }
     }
+
     /// Get the disk path for this `PackageConfig`.
     #[inline]
     fn disk_path(&self) -> PathBuf {
@@ -369,7 +386,9 @@ mod tests {
     fn test_try_from_package() -> anyhow::Result<()> {
         let package = make_tmp_tree().context("failed to make test package")?;
         let package_path = package.path();
-        let conf = PackageConfig::try_from_package(package_path)
+        let cli = BoxUnboxCli::new(package_path);
+
+        let conf = PackageConfig::try_from_package(package_path, &cli)
             .context("failed to create package config from package")?;
 
         assert_eq!(conf.package, package_path);
@@ -386,6 +405,44 @@ mod tests {
         assert!(!conf.link_root);
         assert!(!conf.no_create_dirs);
         assert_eq!(conf.link_type, LinkType::SymlinkAbsolute);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_try_from_package_respects_cli() -> anyhow::Result<()> {
+        let package = make_tmp_tree().context("failed to make test package")?;
+        let package_path = package.path();
+        let mut cli = BoxUnboxCli::new(package_path);
+        // change EVERY value from the default for a comprehensive test
+        cli.link_root = true;
+        cli.no_create_dirs = true;
+        cli.link_type = Some(LinkType::HardLink);
+        let test_regex = Regex::new("^test$").context("failed to compile test Regex")?;
+        cli.ignore_pats = vec![test_regex];
+        let expected_target = PathBuf::from("/path/to/test/target");
+        cli.target = Some(expected_target.clone());
+
+        let conf = PackageConfig::try_from_package(package_path, &cli)
+            .context("failed to create package config from package")?;
+
+        assert_eq!(conf.package, package_path);
+        assert_eq!(conf.target, expected_target);
+        let expected_ignore_pats = __ignore_pats_default()
+            .into_iter()
+            .chain(cli.ignore_pats.clone())
+            .collect::<Vec<Regex>>();
+        assert!(
+            conf.ignore_pats.len() == expected_ignore_pats.len()
+                && conf
+                    .ignore_pats
+                    .iter()
+                    .zip(expected_ignore_pats)
+                    .all(|(a, b)| a.as_str() == b.as_str())
+        );
+        assert!(conf.link_root);
+        assert!(conf.no_create_dirs);
+        assert_eq!(conf.link_type, LinkType::HardLink);
 
         Ok(())
     }
