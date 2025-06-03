@@ -152,6 +152,21 @@ impl PackageConfig {
         ".bub.toml"
     }
 
+    /// Create a new [`PackageConfig`] with the given `package` and default values.
+    ///
+    /// # Arguments
+    ///
+    /// - `package` - The package this config is for.
+    pub fn new<P: Into<PathBuf>>(package: P) -> Self {
+        Self {
+            package: package.into(),
+            target: __target_default(),
+            ignore_pats: __ignore_pats_default(),
+            link_root: bool::default(),
+            link_type: LinkType::default(),
+        }
+    }
+
     /// Create a new [`PackageConfig`] from the given `package` and `target` paths and default
     /// values for everything else.
     ///
@@ -159,7 +174,8 @@ impl PackageConfig {
     ///
     /// - `package` - The package directory to create a config for.
     /// - `target` - The target directory of the new config.
-    pub fn new<P: Into<PathBuf>, Q: Into<PathBuf>>(package: P, target: Q) -> Self {
+    #[cfg(test)]
+    pub fn new_with_target<P: Into<PathBuf>, Q: Into<PathBuf>>(package: P, target: Q) -> Self {
         Self {
             package: package.into(),
             target: target.into(),
@@ -408,7 +424,7 @@ mod tests {
     #[test]
     fn test_save_to_package() -> anyhow::Result<()> {
         let package = tempfile::tempdir().context("failed to make test package")?;
-        let conf = PackageConfig::new(package.path(), __target_default());
+        let conf = PackageConfig::new(package.path());
         conf.save_to_package()
             .context("failed to save config to test package")?;
         let conf_path = package.path().join(PackageConfig::__serde_file_name());
@@ -436,7 +452,7 @@ mod tests {
         let package = make_tmp_tree().context("failed to make test package")?;
         let package_path = package.path();
         let old_config = OldPackageConfig::default();
-        let expected = PackageConfig::new(package_path, __target_default());
+        let expected = PackageConfig::new(package_path);
         let actual = PackageConfig::from_old_package(package_path, old_config);
 
         assert_eq!(expected, actual);

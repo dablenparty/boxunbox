@@ -40,7 +40,7 @@ fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
                 }
                 Err(err) => {
                     eprintln!("{}: error reading old config: {err}", "warn".yellow());
-                    PackageConfig::new(package, BASE_DIRS.home_dir())
+                    PackageConfig::new(package)
                 }
             }
         }

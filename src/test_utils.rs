@@ -46,7 +46,7 @@ pub fn make_tmp_tree() -> anyhow::Result<TempDir> {
     }
 
     // create demo config with home dir as target
-    let conf = PackageConfig::new(root, PathBuf::from(TEST_TARGET));
+    let conf = PackageConfig::new(root);
     conf.save_to_package()
         .context("failed to save test config")?;
 
