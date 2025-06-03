@@ -6,7 +6,7 @@ use clap::{
 };
 use regex::Regex;
 
-use crate::utils::expand_into_pathbuf;
+use crate::{package::LinkType, utils::expand_into_pathbuf};
 
 /// Get the color styles for the CLI help menu.
 fn __cli_styles() -> Styles {
@@ -71,8 +71,10 @@ pub struct BoxUnboxCli {
     #[arg(short, long = "ignore")]
     pub ignore_pats: Vec<Regex>,
     /// Link the package directory itself.
-    #[arg(short, long)]
+    #[arg(short = 'r', long)]
     pub link_root: bool,
+    #[arg(short, long)]
+    pub link_type: Option<LinkType>,
     /// Do not create directories at target locations.
     #[arg(long)]
     pub no_create_dirs: bool,
