@@ -90,6 +90,7 @@ pub fn plan_unboxing(
 #[cfg(test)]
 mod tests {
     use anyhow::Context;
+    use regex::Regex;
 
     use crate::test_utils::{TEST_PACKAGE_FILE_TAILS, TEST_TARGET, make_tmp_tree};
 
@@ -132,6 +133,70 @@ mod tests {
 
     #[test]
     fn test_plan_unboxing_nested_config() -> anyhow::Result<()> {
-        todo!()
+        const TEST_NESTED_PACKAGE: &str = "folder1";
+
+        let package = make_tmp_tree().context("failed to make test package")?;
+        let package_path = package.path();
+        let cli = BoxUnboxCli::new(package_path);
+        let config = PackageConfig::init(package_path, &cli)
+            .context("failed to create test package config")?;
+
+        // make nested config
+        // NOTE: don't use TEST_TARGET here, we want to make sure the target change works
+        let expected_nested_target = PathBuf::from("/some/other/test/target");
+        let expected_nested_package = package_path.join(TEST_NESTED_PACKAGE);
+        let mut nested_config = PackageConfig::new_with_target(
+            expected_nested_package.clone(),
+            expected_nested_target.clone(),
+        );
+        nested_config
+            .ignore_pats
+            .push(Regex::new("^test_ignore.*").expect("test Regex should compile"));
+        nested_config
+            .save_to_package()
+            .context("failed to save nested test config to test package")?;
+
+        let expected_target = PathBuf::from(TEST_TARGET);
+        let expected_plan = TEST_PACKAGE_FILE_TAILS
+            .into_iter()
+            .filter(|tail| !tail.ends_with("test_ignore2.txt"))
+            .map(|tail| {
+                let dest = if tail.starts_with(TEST_NESTED_PACKAGE) {
+                    expected_nested_target.join(tail)
+                } else {
+                    expected_target.join(tail)
+                };
+
+                PlannedLink {
+                    src: package_path.join(tail),
+                    dest,
+                    ty: LinkType::SymlinkAbsolute,
+                }
+            })
+            .collect::<Vec<_>>();
+        let actual_plan = plan_unboxing(config, &cli)?;
+
+        assert_eq!(
+            expected_plan.len(),
+            actual_plan.len(),
+            "unboxing plan has unexpected length"
+        );
+
+        for pl in &actual_plan {
+            assert!(
+                expected_plan.contains(pl),
+                "unboxing plan contains unexpected planned link: {pl:?}"
+            );
+
+            if pl.src.starts_with(&expected_nested_package) {
+                assert!(
+                    pl.dest.starts_with(&expected_nested_target),
+                    "nested planned link has unexpected target '{:?}'",
+                    pl.dest
+                );
+            }
+        }
+
+        Ok(())
     }
 }
