@@ -93,7 +93,6 @@ impl PartialEq for PackageConfig {
                 .zip(&other.ignore_pats)
                 .all(|(l, r)| l.as_str() == r.as_str())
             && self.link_root == other.link_root
-            && self.no_create_dirs == other.no_create_dirs
             && self.link_type == other.link_type
     }
 }
@@ -117,9 +116,6 @@ pub struct PackageConfig {
     /// Only link the root package folder, creating one link.
     #[serde(default = "bool::default")]
     pub link_root: bool,
-    /// Do not create directories in `target`. If one does not exist, an error is thrown.
-    #[serde(default = "bool::default")]
-    pub no_create_dirs: bool,
     /// What type of link to create.
     #[serde(default = "LinkType::default")]
     pub link_type: LinkType,
@@ -162,7 +158,6 @@ impl PackageConfig {
             target: target.into(),
             ignore_pats: __ignore_pats_default(),
             link_root: bool::default(),
-            no_create_dirs: bool::default(),
             link_type: LinkType::default(),
         }
     }
@@ -192,7 +187,6 @@ impl PackageConfig {
         if let Some(link_type) = cli.link_type {
             config.link_type = link_type;
         }
-        config.no_create_dirs |= cli.no_create_dirs;
         if let Some(target) = cli.target.as_ref() {
             config.target.clone_from(target);
         }
@@ -207,7 +201,6 @@ impl PackageConfig {
             target: value.target,
             ignore_pats: value.ignore_pats,
             link_root: value.link_root,
-            no_create_dirs: value.no_create_dirs,
             link_type: match (value.use_relative_links, value.use_hard_links) {
                 (_, true) => LinkType::HardLink,
                 (false, false) => LinkType::SymlinkAbsolute,
@@ -403,7 +396,6 @@ mod tests {
                     .all(|(a, b)| a.as_str() == b.as_str())
         );
         assert!(!conf.link_root);
-        assert!(!conf.no_create_dirs);
         assert_eq!(conf.link_type, LinkType::SymlinkAbsolute);
 
         Ok(())
@@ -416,7 +408,6 @@ mod tests {
         let mut cli = BoxUnboxCli::new(package_path);
         // change EVERY value from the default for a comprehensive test
         cli.link_root = true;
-        cli.no_create_dirs = true;
         cli.link_type = Some(LinkType::HardLink);
         let test_regex = Regex::new("^test$").context("failed to compile test Regex")?;
         cli.ignore_pats = vec![test_regex];
@@ -441,7 +432,6 @@ mod tests {
                     .all(|(a, b)| a.as_str() == b.as_str())
         );
         assert!(conf.link_root);
-        assert!(conf.no_create_dirs);
         assert_eq!(conf.link_type, LinkType::HardLink);
 
         Ok(())
