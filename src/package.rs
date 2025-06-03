@@ -35,6 +35,7 @@ fn __ignore_pats_default() -> Vec<Regex> {
     static DEFAULT_REGEX_VEC: LazyLock<Vec<Regex>> = LazyLock::new(|| {
         vec![
             Regex::new(r"\.unboxrc.*$").unwrap(),
+            Regex::new(r"\.bub\.toml$").unwrap(),
             Regex::new(r"^\.git.*$").unwrap(),
             Regex::new(r"^(README|LICEN[CS]E|COPYING).*$").unwrap(),
         ]
