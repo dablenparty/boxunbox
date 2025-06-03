@@ -116,15 +116,18 @@ mod tests {
             .collect::<Vec<_>>();
         let actual_plan = plan_unboxing(config, &cli)?;
 
-        assert_eq!(expected_plan.len(), actual_plan.len());
-        // FIXME: this fails because they are out of order with
-        // each other. I hate vec comparison sometimes
-        assert!(
-            expected_plan
-                .iter()
-                .zip(actual_plan)
-                .all(|(exp, act)| *exp == act)
+        assert_eq!(
+            expected_plan.len(),
+            actual_plan.len(),
+            "unboxing plan has unexpected length"
         );
+
+        for pl in &actual_plan {
+            assert!(
+                expected_plan.contains(pl),
+                "unboxing plan contains unexpected planned link: {pl:?}"
+            );
+        }
 
         Ok(())
     }
