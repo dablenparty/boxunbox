@@ -86,3 +86,51 @@ pub fn plan_unboxing(
 
     Ok(targets)
 }
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Context;
+
+    use crate::{
+        constants::BASE_DIRS,
+        test_utils::{TEST_PACKAGE_FILE_TAILS, make_tmp_tree},
+    };
+
+    use super::*;
+
+    #[test]
+    fn test_plan_unboxing() -> anyhow::Result<()> {
+        let package = make_tmp_tree().context("failed to make test package")?;
+        let package_path = package.path();
+        let cli = BoxUnboxCli::new(package_path);
+        let config = PackageConfig::init(package_path, &cli)
+            .context("failed to create test package config")?;
+
+        let expected_plan = TEST_PACKAGE_FILE_TAILS
+            .iter()
+            .map(|tail| PlannedLink {
+                src: package_path.join(tail),
+                dest: BASE_DIRS.home_dir().join(tail),
+                ty: LinkType::SymlinkAbsolute,
+            })
+            .collect::<Vec<_>>();
+        let actual_plan = plan_unboxing(config, &cli)?;
+
+        assert_eq!(expected_plan.len(), actual_plan.len());
+        // FIXME: this fails because they are out of order with
+        // each other. I hate vec comparison sometimes
+        assert!(
+            expected_plan
+                .iter()
+                .zip(actual_plan)
+                .all(|(exp, act)| *exp == act)
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_plan_unboxing_nested_config() -> anyhow::Result<()> {
+        todo!()
+    }
+}
