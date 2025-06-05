@@ -212,4 +212,38 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_plan_unbox_root() -> anyhow::Result<()> {
+        let package = make_tmp_tree().context("failed to make test package")?;
+        let package_path = package.path();
+        let mut cli = BoxUnboxCli::new(package_path);
+        // just override with CLI; don't bother re-saving the package config
+        cli.link_root = true;
+        let config = PackageConfig::init(package_path, &cli)
+            .context("failed to create test package config")?;
+
+        let expected_target = PathBuf::from(TEST_TARGET);
+        let expected_plan = [PlannedLink {
+            src: package_path.to_path_buf(),
+            dest: expected_target.clone(),
+            ty: LinkType::SymlinkAbsolute,
+        }];
+        let actual_plan = plan_unboxing(config, &cli)?;
+
+        assert_eq!(
+            expected_plan.len(),
+            actual_plan.len(),
+            "unboxing plan has unexpected length"
+        );
+
+        for pl in &actual_plan {
+            assert!(
+                expected_plan.contains(pl),
+                "unboxing plan contains unexpected planned link: {pl:?}"
+            );
+        }
+
+        Ok(())
+    }
 }
