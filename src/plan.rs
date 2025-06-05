@@ -13,6 +13,18 @@ pub struct PlannedLink {
     ty: LinkType,
 }
 
+/// Plan an unboxing. This takes a [`PackageConfig`] and CLI and returns a list of
+/// [`PlannedLink`]s.
+///
+/// # Arguments
+///
+/// - `root_config` - The initial config to plan with.
+/// - `cli` - CLI flags to merge with [`PackageConfig`]s.
+///
+/// # Errors
+///
+/// An error is returned if one occurs while parsing nested [`PackageConfig`]s, converting old RON
+/// configs to TOML, or walking the package tree.
 pub fn plan_unboxing(
     root_config: PackageConfig,
     cli: &BoxUnboxCli,
