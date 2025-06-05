@@ -1,4 +1,7 @@
-use std::{fmt, path::PathBuf};
+use std::{
+    fmt::{self, Display},
+    path::PathBuf,
+};
 
 use clap::{
     Parser, ValueEnum, ValueHint,
@@ -32,24 +35,6 @@ pub enum ColorOverride {
     Always,
     Auto,
     Never,
-}
-
-impl Default for ColorOverride {
-    fn default() -> Self {
-        Self::Auto
-    }
-}
-
-impl fmt::Display for ColorOverride {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            ColorOverride::Always => "always",
-            ColorOverride::Auto => "auto",
-            ColorOverride::Never => "never",
-        };
-
-        write!(f, "{s}")
-    }
 }
 
 /// boxunbox is a symlinker inspired by GNU stow.
@@ -87,6 +72,24 @@ pub struct BoxUnboxCli {
     /// Directory to unbox PACKAGE to. [default: ~]
     #[arg(short, long, value_parser = cli_parse_pathbuf, value_hint = ValueHint::DirPath)]
     pub target: Option<PathBuf>,
+}
+
+impl Default for ColorOverride {
+    fn default() -> Self {
+        Self::Auto
+    }
+}
+
+impl Display for ColorOverride {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            ColorOverride::Always => "always",
+            ColorOverride::Auto => "auto",
+            ColorOverride::Never => "never",
+        };
+
+        write!(f, "{s}")
+    }
 }
 
 #[cfg(test)]

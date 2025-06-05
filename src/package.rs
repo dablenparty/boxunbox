@@ -13,7 +13,7 @@ pub mod error;
 ///
 /// # Arguments
 ///
-/// - `d` - Argument to deserialize, expected to be `&str`.
+/// - `d` - Argument to deserialize, expected to be `String`.
 fn __de_pathbuf<'de, D>(d: D) -> Result<PathBuf, D::Error>
 where
     D: Deserializer<'de>,
@@ -23,23 +23,12 @@ where
     expand_into_pathbuf(s).map_err(D::Error::custom)
 }
 
-/// Utility function returning the default value for [`PackageConfig::target`], which is the users
-/// home directory.
-#[cfg(not(test))]
-fn __target_default() -> PathBuf {
-    BASE_DIRS.home_dir().to_path_buf()
-}
-
-#[cfg(test)]
-fn __target_default() -> PathBuf {
-    PathBuf::from(crate::test_utils::TEST_TARGET)
-}
-
 /// Utility function returning the default value for [`PackageConfig::ignore_pats`], which is a
-/// Regex for the `.unboxrc.ron` file, `git` files, and some `.md` files.
+/// Regex for the config file, `git` files, and some `.md` files.
 fn __ignore_pats_default() -> Vec<Regex> {
     static DEFAULT_REGEX_VEC: LazyLock<Vec<Regex>> = LazyLock::new(|| {
         vec![
+            #[warn(deprecated_in_future)]
             Regex::new(r"\.unboxrc.*$").unwrap(),
             Regex::new(r"\.bub\.toml$").unwrap(),
             Regex::new(r"^\.git.*$").unwrap(),
@@ -48,6 +37,20 @@ fn __ignore_pats_default() -> Vec<Regex> {
     });
 
     DEFAULT_REGEX_VEC.clone()
+}
+
+/// Utility function returning the default value for [`PackageConfig::target`], which is the users
+/// home directory.
+#[cfg(not(test))]
+fn __target_default() -> PathBuf {
+    BASE_DIRS.home_dir().to_path_buf()
+}
+
+/// Utility function returning the default **_test_** value for [`PackageConfig::target`], which is
+/// created from [`crate::test_utils::TEST_TARGET`].
+#[cfg(test)]
+fn __target_default() -> PathBuf {
+    PathBuf::from(crate::test_utils::TEST_TARGET)
 }
 
 /// Describes what to do if a target link already exists.
@@ -72,39 +75,24 @@ pub enum LinkType {
     HardLink,
 }
 
-impl Default for LinkType {
-    fn default() -> Self {
-        Self::SymlinkAbsolute
-    }
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename = "PackageConfig")]
+#[warn(deprecated_in_future)]
+#[allow(clippy::struct_excessive_bools)]
+pub struct OldPackageConfig {
+    #[serde(default = "__target_default", deserialize_with = "__de_pathbuf")]
+    pub target: PathBuf,
+    #[serde(default = "__ignore_pats_default", with = "serde_regex")]
+    pub ignore_pats: Vec<Regex>,
+    #[serde(default = "bool::default")]
+    pub link_root: bool,
+    #[serde(default = "bool::default")]
+    pub no_create_dirs: bool,
+    #[serde(default = "bool::default")]
+    pub use_relative_links: bool,
+    #[serde(default = "bool::default")]
+    pub use_hard_links: bool,
 }
-
-impl Display for LinkType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            LinkType::SymlinkAbsolute => "absolute symlink",
-            LinkType::SymlinkRelative => "relative symlink",
-            LinkType::HardLink => "hard link",
-        };
-        write!(f, "{s}")
-    }
-}
-
-impl PartialEq for PackageConfig {
-    fn eq(&self, other: &Self) -> bool {
-        self.package == other.package
-            && self.target == other.target
-            && self.ignore_pats.len() == other.ignore_pats.len()
-            && self
-                .ignore_pats
-                .iter()
-                .zip(&other.ignore_pats)
-                .all(|(l, r)| l.as_str() == r.as_str())
-            && self.link_root == other.link_root
-            && self.link_type == other.link_type
-    }
-}
-
-impl Eq for PackageConfig {}
 
 /// A package configuration. Can de/serialize with [`serde`].
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -128,23 +116,126 @@ pub struct PackageConfig {
     pub link_type: LinkType,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(rename = "PackageConfig")]
-#[warn(deprecated_in_future)]
-#[allow(clippy::struct_excessive_bools)]
-pub struct OldPackageConfig {
-    #[serde(default = "__target_default", deserialize_with = "__de_pathbuf")]
-    pub target: PathBuf,
-    #[serde(default = "__ignore_pats_default", with = "serde_regex")]
-    pub ignore_pats: Vec<Regex>,
-    #[serde(default = "bool::default")]
-    pub link_root: bool,
-    #[serde(default = "bool::default")]
-    pub no_create_dirs: bool,
-    #[serde(default = "bool::default")]
-    pub use_relative_links: bool,
-    #[serde(default = "bool::default")]
-    pub use_hard_links: bool,
+impl Default for LinkType {
+    fn default() -> Self {
+        Self::SymlinkAbsolute
+    }
+}
+
+#[cfg(test)]
+impl Default for OldPackageConfig {
+    fn default() -> Self {
+        Self {
+            target: __target_default(),
+            ignore_pats: __ignore_pats_default(),
+            link_root: false,
+            no_create_dirs: false,
+            use_relative_links: false,
+            use_hard_links: false,
+        }
+    }
+}
+
+impl Display for LinkType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            LinkType::SymlinkAbsolute => "absolute symlink",
+            LinkType::SymlinkRelative => "relative symlink",
+            LinkType::HardLink => "hard link",
+        };
+        write!(f, "{s}")
+    }
+}
+
+impl Eq for PackageConfig {}
+
+impl PartialEq for PackageConfig {
+    fn eq(&self, other: &Self) -> bool {
+        self.package == other.package
+            && self.target == other.target
+            && self.ignore_pats.len() == other.ignore_pats.len()
+            && self
+                .ignore_pats
+                .iter()
+                .zip(&other.ignore_pats)
+                .all(|(l, r)| l.as_str() == r.as_str())
+            && self.link_root == other.link_root
+            && self.link_type == other.link_type
+    }
+}
+
+impl TryFrom<PathBuf> for OldPackageConfig {
+    type Error = error::ConfigRead;
+
+    fn try_from(package: PathBuf) -> Result<Self, Self::Error> {
+        let default_rc_path = package.join(OldPackageConfig::__rc_file_name());
+        let os_rc_path = package.join(OldPackageConfig::__os_rc_file_name());
+
+        let rc_file = if os_rc_path.try_exists().unwrap_or(false) {
+            os_rc_path
+        } else if default_rc_path.try_exists().unwrap_or(false) {
+            default_rc_path
+        } else {
+            // no config found for this package
+            return Err(error::ConfigRead::FileNotFound(package));
+        };
+
+        #[cfg(debug_assertions)]
+        println!("reading config: {}", rc_file.display());
+
+        let rc_str = std::fs::read_to_string(&rc_file).map_err(|err| error::ConfigRead::Io {
+            source: err,
+            path: rc_file.clone(),
+        })?;
+
+        let rc: OldPackageConfig = ron::from_str(&rc_str)?;
+
+        Ok(rc)
+    }
+}
+
+impl TryFrom<PathBuf> for PackageConfig {
+    type Error = error::ConfigRead;
+
+    fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
+        let config_path = value;
+
+        if !config_path
+            .try_exists()
+            .map_err(|err| error::ConfigRead::Io {
+                source: err,
+                path: config_path.clone(),
+            })?
+        {
+            return Err(error::ConfigRead::FileNotFound(config_path));
+        }
+
+        let config_str =
+            &std::fs::read_to_string(&config_path).map_err(|err| error::ConfigRead::Io {
+                source: err,
+                path: config_path.clone(),
+            })?;
+        let mut parsed_config: Self = toml::from_str(config_str)?;
+        parsed_config.package = config_path
+            .parent()
+            .unwrap_or_else(|| panic!("file '{}' has no parent", config_path.display()))
+            .to_path_buf();
+
+        Ok(parsed_config)
+    }
+}
+
+impl OldPackageConfig {
+    /// Expected file name of the RC file.
+    const fn __rc_file_name() -> &'static str {
+        // TODO: consider allowing multiple names
+        ".unboxrc.ron"
+    }
+
+    /// Expected file name of the OS-specific RC file.
+    const fn __os_rc_file_name() -> &'static str {
+        formatc!(".unboxrc.{}.ron", std::env::consts::OS)
+    }
 }
 
 impl PackageConfig {
@@ -263,94 +354,6 @@ impl PackageConfig {
             path: config_path,
         })?;
         Ok(())
-    }
-}
-
-impl TryFrom<PathBuf> for PackageConfig {
-    type Error = error::ConfigRead;
-
-    fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
-        let config_path = value;
-
-        if !config_path
-            .try_exists()
-            .map_err(|err| error::ConfigRead::Io {
-                source: err,
-                path: config_path.clone(),
-            })?
-        {
-            return Err(error::ConfigRead::FileNotFound(config_path));
-        }
-
-        let config_str =
-            &std::fs::read_to_string(&config_path).map_err(|err| error::ConfigRead::Io {
-                source: err,
-                path: config_path.clone(),
-            })?;
-        let mut parsed_config: Self = toml::from_str(config_str)?;
-        parsed_config.package = config_path
-            .parent()
-            .unwrap_or_else(|| panic!("file '{}' has no parent", config_path.display()))
-            .to_path_buf();
-
-        Ok(parsed_config)
-    }
-}
-
-impl OldPackageConfig {
-    /// Expected file name of the RC file.
-    const fn __rc_file_name() -> &'static str {
-        // TODO: consider allowing multiple names
-        ".unboxrc.ron"
-    }
-
-    /// Expected file name of the OS-specific RC file.
-    const fn __os_rc_file_name() -> &'static str {
-        formatc!(".unboxrc.{}.ron", std::env::consts::OS)
-    }
-}
-
-#[cfg(test)]
-impl Default for OldPackageConfig {
-    fn default() -> Self {
-        Self {
-            target: __target_default(),
-            ignore_pats: __ignore_pats_default(),
-            link_root: false,
-            no_create_dirs: false,
-            use_relative_links: false,
-            use_hard_links: false,
-        }
-    }
-}
-
-impl TryFrom<PathBuf> for OldPackageConfig {
-    type Error = error::ConfigRead;
-
-    fn try_from(package: PathBuf) -> Result<Self, Self::Error> {
-        let default_rc_path = package.join(OldPackageConfig::__rc_file_name());
-        let os_rc_path = package.join(OldPackageConfig::__os_rc_file_name());
-
-        let rc_file = if os_rc_path.try_exists().unwrap_or(false) {
-            os_rc_path
-        } else if default_rc_path.try_exists().unwrap_or(false) {
-            default_rc_path
-        } else {
-            // no config found for this package
-            return Err(error::ConfigRead::FileNotFound(package));
-        };
-
-        #[cfg(debug_assertions)]
-        println!("reading config: {}", rc_file.display());
-
-        let rc_str = std::fs::read_to_string(&rc_file).map_err(|err| error::ConfigRead::Io {
-            source: err,
-            path: rc_file.clone(),
-        })?;
-
-        let rc: OldPackageConfig = ron::from_str(&rc_str)?;
-
-        Ok(rc)
     }
 }
 

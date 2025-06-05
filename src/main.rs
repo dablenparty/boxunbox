@@ -5,7 +5,6 @@ use std::path::Path;
 use clap::Parser;
 use cli::{BoxUnboxCli, ColorOverride};
 use colored::Colorize;
-use constants::BASE_DIRS;
 use error::UnboxError;
 use package::{OldPackageConfig, PackageConfig};
 use plan::plan_unboxing;
