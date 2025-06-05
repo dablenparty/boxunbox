@@ -129,6 +129,7 @@ pub struct PackageConfig {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename = "PackageConfig")]
 #[warn(deprecated_in_future)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct OldPackageConfig {
