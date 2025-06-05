@@ -307,7 +307,7 @@ impl PackageConfig {
         Ok(config)
     }
 
-    fn merge_with_cli(&mut self, cli: &BoxUnboxCli) {
+    pub fn merge_with_cli(&mut self, cli: &BoxUnboxCli) {
         self.ignore_pats.extend_from_slice(&cli.ignore_pats[..]);
         self.link_root |= cli.link_root;
         if let Some(link_type) = cli.link_type {

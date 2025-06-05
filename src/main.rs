@@ -33,7 +33,7 @@ fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
                 "warn".yellow(),
                 path_buf.display()
             );
-            match OldPackageConfig::try_from(package.to_path_buf()) {
+            let mut converted_conf = match OldPackageConfig::try_from(package.to_path_buf()) {
                 Ok(old_config) => {
                     let save_note = if cli.save_config || cli.save_os_config {
                         "A converted config will be saved."
@@ -48,7 +48,10 @@ fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
                     eprintln!("{}: error reading old config: {err}", "warn".yellow());
                     PackageConfig::new(package)
                 }
-            }
+            };
+            // converted/default configs need to be merged with the CLI opts
+            converted_conf.merge_with_cli(cli);
+            converted_conf
         }
         Err(err) => return Err(err.into()),
     };
