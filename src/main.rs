@@ -1,6 +1,6 @@
 #![warn(clippy::all, clippy::pedantic)]
 
-use std::path::Path;
+use std::{path::Path, process};
 
 use clap::Parser;
 use cli::{BoxUnboxCli, ColorOverride};
@@ -60,6 +60,10 @@ fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
 
     // TODO: prettier output
     println!("Here's the plan: {unboxing_plan:#?}");
+
+    if cli.dry_run {
+        return Err(UnboxError::DryRun);
+    }
 
     todo!()
 }
