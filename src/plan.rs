@@ -29,6 +29,14 @@ pub fn plan_unboxing(
     root_config: PackageConfig,
     cli: &BoxUnboxCli,
 ) -> Result<Vec<PlannedLink>, PlanningError> {
+    if root_config.link_root {
+        // root_config should already be merged with cli
+        return Ok(vec![PlannedLink {
+            src: root_config.package,
+            dest: root_config.target,
+            ty: root_config.link_type,
+        }]);
+    }
     let mut targets = Vec::new();
     let mut config_stack = vec![root_config];
     let mut walker = walkdir::WalkDir::new(config_stack[0].package.clone())
