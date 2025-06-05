@@ -20,4 +20,6 @@ pub enum UnboxError {
     #[warn(deprecated_in_future)]
     #[error("failed to save TOML config: {0}")]
     ConfigWrite(#[from] ConfigWrite),
+    #[error("failed to plan unboxing: {0}")]
+    Planning(#[from] PlanningError),
 }

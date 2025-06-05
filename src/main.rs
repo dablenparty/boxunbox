@@ -8,6 +8,7 @@ use colored::Colorize;
 use constants::BASE_DIRS;
 use error::UnboxError;
 use package::{OldPackageConfig, PackageConfig};
+use plan::plan_unboxing;
 
 mod cli;
 mod constants;
@@ -28,13 +29,19 @@ fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
         Ok(config) => config,
         Err(package::error::ConfigRead::FileNotFound(path_buf)) => {
             // TODO: Remove this conversion eventually
+            eprintln!(
+                "{}: {} not found, checking for old config...",
+                "warn".yellow(),
+                path_buf.display()
+            );
             match OldPackageConfig::try_from(package.to_path_buf()) {
                 Ok(old_config) => {
-                    eprintln!(
-                        "{}: {} not found, checking for old config...",
-                        "warn".yellow(),
-                        path_buf.display()
-                    );
+                    let save_note = if cli.save_config || cli.save_os_config {
+                        "A converted config will be saved."
+                    } else {
+                        "Please use --save-config to save the converted config."
+                    };
+                    eprintln!("{}: parsed old config! {save_note}", "warn".yellow());
 
                     PackageConfig::from_old_package(package, old_config)
                 }
@@ -49,6 +56,11 @@ fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
 
     #[cfg(debug_assertions)]
     println!("{config:#?}");
+
+    let unboxing_plan = plan_unboxing(config, cli)?;
+
+    // TODO: prettier output
+    println!("Here's the plan: {unboxing_plan:#?}");
 
     todo!()
 }
