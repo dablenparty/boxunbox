@@ -1,17 +1,14 @@
-use std::path::PathBuf;
+use std::{fmt::Display, io, path::PathBuf};
+
+use colored::Colorize;
+use pathdiff::diff_paths;
 
 use crate::{
     cli::BoxUnboxCli,
     error::PlanningError,
     package::{LinkType, PackageConfig, error::ConfigRead},
+    utils::{os_symlink, replace_home_with_tilde},
 };
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct PlannedLink {
-    src: PathBuf,
-    dest: PathBuf,
-    ty: LinkType,
-}
 
 /// Plan an unboxing. This takes a [`PackageConfig`] and CLI and returns a list of
 /// [`PlannedLink`]s.
@@ -108,6 +105,90 @@ pub fn plan_unboxing(
     Ok(targets)
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PlannedLink {
+    src: PathBuf,
+    dest: PathBuf,
+    ty: LinkType,
+}
+
+impl Display for PlannedLink {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self { src, dest, ty } = self;
+        match ty {
+            LinkType::SymlinkAbsolute => {
+                write!(
+                    f,
+                    "{} -> {}",
+                    replace_home_with_tilde(src).bright_green(),
+                    replace_home_with_tilde(dest).cyan()
+                )
+            }
+            LinkType::SymlinkRelative => {
+                let relative_dest = self.make_relative_dest();
+                write!(
+                    f,
+                    "{} -> {}",
+                    replace_home_with_tilde(src).bright_green(),
+                    relative_dest.display().to_string().cyan(),
+                )
+            }
+            LinkType::HardLink => {
+                write!(
+                    f,
+                    "{} -> {} (hard link)",
+                    replace_home_with_tilde(src).bright_green(),
+                    replace_home_with_tilde(dest).bright_red()
+                )
+            }
+        }
+    }
+}
+
+impl PlannedLink {
+    /// Utility function that returns a modified [`PlannedLink::src`] that is relative to the
+    /// parent of [`PlannedLink::dest`].
+    fn make_relative_dest(&self) -> PathBuf {
+        let Self { src, dest, .. } = self;
+
+        assert!(src.is_absolute(), "{} is not absolute", src.display());
+        assert!(dest.is_absolute(), "{} is not absolute", dest.display());
+
+        let dest_parent = dest
+            .parent()
+            .expect("destination link should have a parent directory");
+
+        #[cfg(debug_assertions)]
+        println!("diffing {} with {}", src.display(), dest_parent.display());
+
+        diff_paths(src, dest_parent).expect("diff_paths should not return None")
+    }
+
+    pub fn unbox(&self) -> io::Result<()> {
+        let Self { src, dest, ty } = self;
+
+        let target_parent = dest.parent().expect("dest should be a file");
+        std::fs::create_dir_all(target_parent)?;
+
+        match ty {
+            LinkType::SymlinkAbsolute => {
+                os_symlink(src, dest)?;
+            }
+            LinkType::SymlinkRelative => {
+                let relative_src = self.make_relative_dest();
+                os_symlink(relative_src, dest)?;
+            }
+            LinkType::HardLink => {
+                std::fs::hard_link(src, dest)?;
+            }
+        }
+
+        println!("unboxed {self}");
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use anyhow::Context;
@@ -116,6 +197,23 @@ mod tests {
     use crate::test_utils::{TEST_PACKAGE_FILE_TAILS, TEST_TARGET, make_tmp_tree};
 
     use super::*;
+
+    #[test]
+    fn test_make_relative_dest() {
+        let pl = PlannedLink {
+            src: PathBuf::from("/path/to/package/file"),
+            dest: PathBuf::from("/path/to/target/file"),
+            ty: LinkType::SymlinkRelative,
+        };
+
+        // the destination is supposed to be a path to the package file that is relative to the
+        // destination. The full, unclean path for example:
+        // /path/to/deeper/target/../../package/file
+        let expected_src = PathBuf::from("../package/file");
+        let actual_src = pl.make_relative_dest();
+
+        assert_eq!(expected_src, actual_src);
+    }
 
     #[test]
     fn test_plan_unboxing() -> anyhow::Result<()> {

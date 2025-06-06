@@ -3,6 +3,7 @@ use std::{
     path::PathBuf,
 };
 
+use anyhow::Context;
 use clap::{
     Parser, ValueEnum, ValueHint,
     builder::{Styles, styling::AnsiColor},
@@ -26,7 +27,12 @@ fn __cli_styles() -> Styles {
 ///
 /// - `s` - `&str` slice.
 fn cli_parse_pathbuf(s: &str) -> Result<PathBuf, String> {
-    expand_into_pathbuf(s).map_err(|err| err.to_string())
+    expand_into_pathbuf(s)
+        .and_then(|p| {
+            dunce::canonicalize(&p)
+                .with_context(|| format!("failed to canonicalize {}", p.display()))
+        })
+        .map_err(|err| err.to_string())
 }
 
 /// Override the color setting. Default is [`ColorOverride::Auto`].

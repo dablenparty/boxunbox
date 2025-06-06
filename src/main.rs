@@ -1,7 +1,8 @@
 #![warn(clippy::all, clippy::pedantic)]
 
-use std::{path::Path, process};
+use std::path::Path;
 
+use anyhow::Context;
 use clap::Parser;
 use cli::{BoxUnboxCli, ColorOverride};
 use colored::Colorize;
@@ -59,19 +60,35 @@ fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
     #[cfg(debug_assertions)]
     println!("{config:#?}");
 
+    if cli.save_config {
+        config.save_to_package()?;
+    } else if cli.save_os_config {
+        todo!("save_os_config");
+    }
+
     let unboxing_plan = plan_unboxing(config, cli)?;
 
     // TODO: prettier output
-    println!("Here's the plan: {unboxing_plan:#?}");
+    println!("Here's the plan:");
+    for pl in &unboxing_plan {
+        println!("{pl}");
+    }
 
     if cli.dry_run {
         return Err(UnboxError::DryRun);
     }
 
-    todo!()
+    for planned_link in &unboxing_plan {
+        planned_link.unbox().map_err(|err| UnboxError::Io {
+            pl: planned_link.clone(),
+            source: err,
+        })?;
+    }
+
+    Ok(())
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let cli = BoxUnboxCli::parse();
 
     #[cfg(debug_assertions)]
@@ -90,12 +107,10 @@ fn main() {
     }
 
     for package in packages {
-        if let Err(err) = unbox(package, &cli) {
-            eprintln!(
-                "{}: failed to unbox {}: {err}",
-                "err".bright_red(),
-                package.display()
-            );
-        }
+        let canon_package = dunce::canonicalize(package)?;
+        unbox(&canon_package, &cli)
+            .with_context(|| format!("failed to unbox {}", canon_package.display()))?;
     }
+
+    Ok(())
 }

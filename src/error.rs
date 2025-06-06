@@ -1,6 +1,9 @@
 use thiserror::Error as ThisError;
 
-use crate::package::error::{ConfigRead, ConfigWrite};
+use crate::{
+    package::error::{ConfigRead, ConfigWrite},
+    plan::PlannedLink,
+};
 
 #[derive(Debug, ThisError)]
 pub enum PlanningError {
@@ -22,6 +25,11 @@ pub enum UnboxError {
     ConfigWrite(#[from] ConfigWrite),
     #[error("dry run, not executing")]
     DryRun,
+    #[error("failed to unbox {pl}: {source}")]
+    Io {
+        pl: PlannedLink,
+        source: std::io::Error,
+    },
     #[error("failed to plan unboxing: {0}")]
     Planning(#[from] PlanningError),
 }
