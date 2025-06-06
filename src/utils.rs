@@ -5,6 +5,26 @@ use std::{
 
 use anyhow::Context;
 
+use crate::constants::BASE_DIRS;
+
+/// If the [`Path`] reference begins with the users home directory, it is replaced with a `~`. This
+/// is kinda the opposite of [`expand_into_pathbuf`] and meant for printing.
+///
+/// # Arguments
+///
+/// - `p` - Path reference
+pub fn replace_home_with_tilde<P: AsRef<Path>>(p: P) -> String {
+    let path = p.as_ref();
+    let home = BASE_DIRS.home_dir();
+    if let Ok(tail) = path.strip_prefix(home) {
+        PathBuf::from("~").join(tail)
+    } else {
+        path.to_path_buf()
+    }
+    .to_string_lossy()
+    .to_string()
+}
+
 /**
 Given a reference to a `&str` slice, expand `~` and environment variables, clean path
 components, and return as a [`PathBuf`].
