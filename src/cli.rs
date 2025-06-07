@@ -43,6 +43,21 @@ pub enum ColorOverride {
     Never,
 }
 
+/// Describes what to do if a target link already exists.
+#[derive(Copy, Clone, Debug, ValueEnum)]
+pub enum ExistingFileStrategy {
+    /// Throw an error.
+    ThrowError,
+    /// Ignore the link and continue.
+    Ignore,
+    /// Move the target link to `<target>.bak`.
+    Move,
+    /// Overwrite the target with the package version. (destructive!)
+    Overwrite,
+    /// Overwrite the package with the target version. (destructive!)
+    Adopt,
+}
+
 /// boxunbox is a symlinker inspired by GNU stow.
 #[derive(Clone, Debug, Parser)]
 #[command(about, long_about = None, styles=__cli_styles(), version)]
@@ -61,6 +76,8 @@ pub struct BoxUnboxCli {
     /// Ignore file names via regex. May be specified multiple times.
     #[arg(short, long = "ignore")]
     pub ignore_pats: Vec<Regex>,
+    #[arg(short = 'e', long = "if_target_exists")]
+    pub existing_file_strategy: ExistingFileStrategy,
     /// Link the package directory itself.
     #[arg(short = 'r', long)]
     pub link_root: bool,
@@ -86,6 +103,12 @@ impl Default for ColorOverride {
     }
 }
 
+impl Default for ExistingFileStrategy {
+    fn default() -> Self {
+        Self::ThrowError
+    }
+}
+
 impl Display for ColorOverride {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
@@ -105,6 +128,7 @@ impl BoxUnboxCli {
             packages: vec![package.into()],
             color_override: ColorOverride::default(),
             dry_run: false,
+            existing_file_strategy: ExistingFileStrategy::default(),
             ignore_pats: Vec::new(),
             link_root: false,
             link_type: None,

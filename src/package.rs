@@ -53,20 +53,6 @@ fn __target_default() -> PathBuf {
     PathBuf::from(crate::test_utils::TEST_TARGET)
 }
 
-/// Describes what to do if a target link already exists.
-pub enum ExistingFileStrategy {
-    /// Throw an error.
-    ThrowError,
-    /// Ignore the link and continue.
-    Ignore,
-    /// Move the target link to `<target>.bak`.
-    Move,
-    /// Overwrite the target with the package version. (destructive!)
-    Overwrite,
-    /// Overwrite the package with the target version. (destructive!)
-    Adopt,
-}
-
 /// Describes what type of link to create.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, ValueEnum)]
 pub enum LinkType {
