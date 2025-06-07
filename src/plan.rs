@@ -120,25 +120,25 @@ impl Display for PlannedLink {
                 write!(
                     f,
                     "{} -> {}",
+                    replace_home_with_tilde(dest).cyan(),
                     replace_home_with_tilde(src).bright_green(),
-                    replace_home_with_tilde(dest).cyan()
                 )
             }
             LinkType::SymlinkRelative => {
-                let relative_dest = self.make_relative_dest();
+                let relative_src = self.get_src_relative_to_dest();
                 write!(
                     f,
                     "{} -> {}",
-                    replace_home_with_tilde(src).bright_green(),
-                    relative_dest.display().to_string().cyan(),
+                    replace_home_with_tilde(dest).bright_green(),
+                    relative_src.display().to_string().cyan(),
                 )
             }
             LinkType::HardLink => {
                 write!(
                     f,
                     "{} -> {} (hard link)",
+                    replace_home_with_tilde(dest).bright_red(),
                     replace_home_with_tilde(src).bright_green(),
-                    replace_home_with_tilde(dest).bright_red()
                 )
             }
         }
@@ -147,8 +147,8 @@ impl Display for PlannedLink {
 
 impl PlannedLink {
     /// Utility function that returns a modified [`PlannedLink::src`] that is relative to the
-    /// parent of [`PlannedLink::dest`].
-    fn make_relative_dest(&self) -> PathBuf {
+    /// parent of [`PlannedLink::dest`]. Both paths must be absolute before calling this function.
+    fn get_src_relative_to_dest(&self) -> PathBuf {
         let Self { src, dest, .. } = self;
 
         assert!(src.is_absolute(), "{} is not absolute", src.display());
@@ -175,7 +175,7 @@ impl PlannedLink {
                 os_symlink(src, dest)?;
             }
             LinkType::SymlinkRelative => {
-                let relative_src = self.make_relative_dest();
+                let relative_src = self.get_src_relative_to_dest();
                 os_symlink(relative_src, dest)?;
             }
             LinkType::HardLink => {
@@ -210,7 +210,7 @@ mod tests {
         // destination. The full, unclean path for example:
         // /path/to/deeper/target/../../package/file
         let expected_src = PathBuf::from("../package/file");
-        let actual_src = pl.make_relative_dest();
+        let actual_src = pl.get_src_relative_to_dest();
 
         assert_eq!(expected_src, actual_src);
     }
