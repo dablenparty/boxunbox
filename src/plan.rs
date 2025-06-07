@@ -164,6 +164,13 @@ impl PlannedLink {
         diff_paths(src, dest_parent).expect("diff_paths should not return None")
     }
 
+    /// Unbox this [`PlannedLink`] by creating either a symbolic link or a hard link, depending on
+    /// [`Self::ty`].
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if the `dest` parent cannot be created, if [`os_symlink`] fails
+    /// to create a symbolic link, or if [`hard_link`] fails to create a hard link.
     pub fn unbox(&self) -> io::Result<()> {
         let Self { src, dest, ty } = self;
 
