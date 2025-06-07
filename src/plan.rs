@@ -1,4 +1,4 @@
-use std::{fmt::Display, io, path::PathBuf};
+use std::{fmt::Display, fs, io, path::PathBuf};
 
 use colored::Colorize;
 use pathdiff::diff_paths;
@@ -175,7 +175,7 @@ impl PlannedLink {
         let Self { src, dest, ty } = self;
 
         let target_parent = dest.parent().expect("dest should be a file");
-        std::fs::create_dir_all(target_parent)?;
+        fs::create_dir_all(target_parent)?;
 
         match ty {
             LinkType::SymlinkAbsolute => {
@@ -186,7 +186,7 @@ impl PlannedLink {
                 os_symlink(relative_src, dest)?;
             }
             LinkType::HardLink => {
-                std::fs::hard_link(src, dest)?;
+                fs::hard_link(src, dest)?;
             }
         }
 

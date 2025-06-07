@@ -1,5 +1,7 @@
 #![cfg(test)]
 
+use std::fs;
+
 use anyhow::Context;
 use tempfile::TempDir;
 
@@ -36,10 +38,10 @@ pub fn make_tmp_tree() -> anyhow::Result<TempDir> {
     for file in &TEST_PACKAGE_FILE_TAILS {
         let full_path = root.join(file);
         let parent = full_path.parent().unwrap();
-        std::fs::create_dir_all(parent)
+        fs::create_dir_all(parent)
             .with_context(|| format!("failed to create test dir '{parent:?}'"))?;
         // use file path as file contents
-        std::fs::write(&full_path, full_path.clone().to_string_lossy().as_bytes())
+        fs::write(&full_path, full_path.clone().to_string_lossy().as_bytes())
             .with_context(|| format!("failed to create test file '{full_path:?}'"))?;
     }
 

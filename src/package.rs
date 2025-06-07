@@ -1,4 +1,4 @@
-use std::{fmt::Display, path::PathBuf, sync::LazyLock};
+use std::{fmt::Display, fs, path::PathBuf, sync::LazyLock};
 
 use clap::ValueEnum;
 use const_format::formatc;
@@ -183,7 +183,7 @@ impl TryFrom<PathBuf> for OldPackageConfig {
         #[cfg(debug_assertions)]
         println!("reading config: {}", rc_file.display());
 
-        let rc_str = std::fs::read_to_string(&rc_file).map_err(|err| error::ConfigRead::Io {
+        let rc_str = fs::read_to_string(&rc_file).map_err(|err| error::ConfigRead::Io {
             source: err,
             path: rc_file.clone(),
         })?;
@@ -211,7 +211,7 @@ impl TryFrom<PathBuf> for PackageConfig {
         }
 
         let config_str =
-            &std::fs::read_to_string(&config_path).map_err(|err| error::ConfigRead::Io {
+            &fs::read_to_string(&config_path).map_err(|err| error::ConfigRead::Io {
                 source: err,
                 path: config_path.clone(),
             })?;
@@ -349,7 +349,7 @@ impl PackageConfig {
         let config_path = self.disk_path();
         let config_str = toml::to_string_pretty(self)?;
         // WARN: this truncates the existing file. be careful!
-        std::fs::write(&config_path, config_str).map_err(|err| error::ConfigWrite::Io {
+        fs::write(&config_path, config_str).map_err(|err| error::ConfigWrite::Io {
             source: err,
             path: config_path,
         })?;
