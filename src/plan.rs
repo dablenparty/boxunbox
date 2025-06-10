@@ -224,6 +224,116 @@ impl UnboxPlan {
 
         Ok(plan)
     }
+
+    pub fn unbox(&self) -> Result<(), UnboxError> {
+        for pl in &self.links {
+            let PlannedLink { src, dest, ty } = &pl;
+
+            if dest.try_exists().map_err(|err| UnboxError::Io {
+                pl: pl.clone(),
+                source: err,
+            })? {
+                // TODO: put messages behind --verbose flag (idk how to go about this)
+                // TODO: test ALL OF THESE!!!!
+                match self.efs {
+                    ExistingFileStrategy::Adopt if !dest.is_symlink() => {
+                        // If dest is a symlink, it might point to the src file, which means we'd
+                        // be copying a file into itself, thus truncating it. Not ideal.
+                        eprintln!(
+                            "{}: adopting {}",
+                            "warn".yellow(),
+                            replace_home_with_tilde(dest)
+                        );
+                        fs::copy(dest, src).map_err(|err| UnboxError::Io {
+                            pl: pl.clone(),
+                            source: err,
+                        })?;
+                    }
+                    ExistingFileStrategy::Adopt => {
+                        eprintln!(
+                            "{}: ignoring {} (cannot adopt symlink)",
+                            "warn".yellow(),
+                            replace_home_with_tilde(dest)
+                        );
+                        continue;
+                    }
+                    ExistingFileStrategy::Ignore => {
+                        eprintln!(
+                            "{}: ignoring {} (already exists)",
+                            "warn".yellow(),
+                            replace_home_with_tilde(dest)
+                        );
+                        continue;
+                    }
+                    ExistingFileStrategy::Move => {
+                        let file_name = dest
+                            .file_name()
+                            .expect("dest should be an absolute path to a file")
+                            .to_string_lossy();
+                        let new_dest = dest.with_file_name(format!("{file_name}.bak"));
+                        eprintln!(
+                            "{}: dest exists, moving {} -> {}",
+                            "warn".yellow(),
+                            replace_home_with_tilde(dest),
+                            replace_home_with_tilde(&new_dest)
+                        );
+                        fs::rename(dest, new_dest).map_err(|err| UnboxError::Io {
+                            pl: pl.clone(),
+                            source: err,
+                        })?;
+                    }
+                    ExistingFileStrategy::Overwrite => {
+                        eprintln!(
+                            "{}: overwriting {}",
+                            "warn".yellow(),
+                            replace_home_with_tilde(dest)
+                        );
+                        fs::remove_file(dest).map_err(|err| UnboxError::Io {
+                            pl: pl.clone(),
+                            source: err,
+                        })?;
+                    }
+                    ExistingFileStrategy::ThrowError => {
+                        return Err(UnboxError::TargetAlreadyExists(pl.clone()));
+                    }
+                }
+            }
+
+            if self.create_dirs {
+                let target_parent = dest.parent().expect("dest should be a file");
+                fs::create_dir_all(target_parent).map_err(|err| UnboxError::Io {
+                    pl: pl.clone(),
+                    source: err,
+                })?;
+            }
+
+            match ty {
+                LinkType::SymlinkAbsolute => {
+                    os_symlink(src, dest).map_err(|err| UnboxError::Io {
+                        pl: pl.clone(),
+                        source: err,
+                    })?;
+                }
+                LinkType::SymlinkRelative => {
+                    let relative_src = pl.get_src_relative_to_dest();
+                    os_symlink(relative_src, dest).map_err(|err| UnboxError::Io {
+                        pl: pl.clone(),
+                        source: err,
+                    })?;
+                }
+                LinkType::HardLink => {
+                    fs::hard_link(src, dest).map_err(|err| UnboxError::Io {
+                        pl: pl.clone(),
+                        source: err,
+                    })?;
+                }
+            }
+
+            println!("unboxed {pl}");
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -234,6 +344,11 @@ mod tests {
     use crate::test_utils::{TEST_PACKAGE_FILE_TAILS, TEST_TARGET, make_tmp_tree};
 
     use super::*;
+
+    #[test]
+    fn test_unbox() {
+        todo!("test_unbox")
+    }
 
     #[test]
     fn test_make_relative_dest() {

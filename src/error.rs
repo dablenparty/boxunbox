@@ -32,4 +32,6 @@ pub enum UnboxError {
     },
     #[error("failed to plan unboxing: {0}")]
     Planning(#[from] PlanningError),
+    #[error("target already exists for {0}")]
+    TargetAlreadyExists(PlannedLink),
 }
