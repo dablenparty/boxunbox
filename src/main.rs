@@ -8,7 +8,7 @@ use cli::{BoxUnboxCli, ColorOverride};
 use colored::Colorize;
 use error::UnboxError;
 use package::{OldPackageConfig, PackageConfig};
-use plan::plan_unboxing;
+use plan::UnboxPlan;
 
 mod cli;
 mod constants;
@@ -66,24 +66,17 @@ fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
         todo!("save_os_config");
     }
 
-    let unboxing_plan = plan_unboxing(config, cli)?;
+    let unboxing_plan = UnboxPlan::plan_unboxing(config, cli)?;
 
     // TODO: prettier output
     println!("Here's the plan:");
-    for pl in &unboxing_plan {
-        println!("{pl}");
-    }
+    println!("{unboxing_plan:#?}");
 
     if cli.dry_run {
         return Err(UnboxError::DryRun);
     }
 
-    for planned_link in &unboxing_plan {
-        planned_link.unbox().map_err(|err| UnboxError::Io {
-            pl: planned_link.clone(),
-            source: err,
-        })?;
-    }
+    unboxing_plan.unbox()?;
 
     Ok(())
 }

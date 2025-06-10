@@ -4,112 +4,27 @@ use colored::Colorize;
 use pathdiff::diff_paths;
 
 use crate::{
-    cli::BoxUnboxCli,
-    error::PlanningError,
+    cli::{BoxUnboxCli, ExistingFileStrategy},
+    error::{PlanningError, UnboxError},
     package::{LinkType, PackageConfig, error::ConfigRead},
     utils::{os_symlink, replace_home_with_tilde},
 };
-
-/// Plan an unboxing. This takes a [`PackageConfig`] and CLI and returns a list of
-/// [`PlannedLink`]s.
-///
-/// # Arguments
-///
-/// - `root_config` - The initial config to plan with.
-/// - `cli` - CLI flags to merge with [`PackageConfig`]s.
-///
-/// # Errors
-///
-/// An error is returned if one occurs while parsing nested [`PackageConfig`]s, converting old RON
-/// configs to TOML, or walking the package tree.
-pub fn plan_unboxing(
-    root_config: PackageConfig,
-    cli: &BoxUnboxCli,
-) -> Result<Vec<PlannedLink>, PlanningError> {
-    if root_config.link_root {
-        // root_config should already be merged with cli
-        return Ok(vec![PlannedLink {
-            src: root_config.package,
-            dest: root_config.target,
-            ty: root_config.link_type,
-        }]);
-    }
-    let mut targets = Vec::new();
-    let mut config_stack = vec![root_config];
-    let mut walker = walkdir::WalkDir::new(config_stack[0].package.clone())
-        .sort_by_file_name()
-        .into_iter();
-    // don't process root package, although keep it for later
-    let root_entry = walker.next().expect("walker should contain root entry")?;
-    while let Some(res) = walker.next() {
-        let entry = res?;
-        let file_name = entry.file_name().to_string_lossy();
-        let file_type = entry.file_type();
-        let should_be_ignored = config_stack
-            .iter()
-            .flat_map(|conf| conf.ignore_pats.clone())
-            .any(|re| re.is_match(&file_name));
-
-        if should_be_ignored {
-            if file_type.is_dir() {
-                walker.skip_current_dir();
-            }
-            continue;
-        }
-
-        let entry_path = entry.path();
-        let current_config = config_stack
-            .last()
-            .expect("config_stack should not be empty");
-        // if we're not in the package defined by the current config, pop the config from the stack
-        if !entry_path.starts_with(&current_config.package) {
-            let _ = config_stack.pop().unwrap();
-        }
-
-        if file_type.is_dir() {
-            // read nested config
-            match PackageConfig::init(entry_path, cli) {
-                Ok(config) => config_stack.push(config),
-                Err(ConfigRead::FileNotFound(_)) => {}
-                Err(err) => return Err(err.into()),
-            }
-
-            continue;
-        }
-
-        // ent is definitely a file at this point
-        // shadow current_config in case a new one was added
-        let current_config = config_stack
-            .last()
-            .expect("config_stack should not be empty");
-
-        let PackageConfig {
-            target, link_type, ..
-        } = current_config;
-
-        // don't use nested package to strip prefix or else the files will not be placed in
-        // the correct target directory.
-        // strip_prefix with root package: <target>/folder1/nested1.txt
-        // strip_prefix with nested package: <target>/nested1.txt
-        let path_tail = entry_path
-            .strip_prefix(root_entry.path())
-            .expect("entry_path should be prefixed by package");
-
-        targets.push(PlannedLink {
-            src: entry_path.to_path_buf(),
-            dest: target.join(path_tail),
-            ty: *link_type,
-        });
-    }
-
-    Ok(targets)
-}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PlannedLink {
     src: PathBuf,
     dest: PathBuf,
     ty: LinkType,
+}
+
+#[derive(Debug)]
+pub struct UnboxPlan {
+    /// Planned links
+    links: Vec<PlannedLink>,
+    /// What to do if [`PlannedLink::dest`] exists
+    efs: ExistingFileStrategy,
+    /// Whether to create missing dirs in `target` or not
+    create_dirs: bool,
 }
 
 impl Display for PlannedLink {
@@ -141,6 +56,17 @@ impl Display for PlannedLink {
                     replace_home_with_tilde(src).bright_green(),
                 )
             }
+        }
+    }
+}
+
+#[cfg(test)]
+impl<A: Into<PlannedLink>> FromIterator<A> for UnboxPlan {
+    fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self {
+        Self {
+            links: iter.into_iter().map(Into::into).collect(),
+            efs: ExistingFileStrategy::default(),
+            create_dirs: true,
         }
     }
 }
@@ -196,6 +122,110 @@ impl PlannedLink {
     }
 }
 
+impl UnboxPlan {
+    /// Plan an unboxing. This takes a [`PackageConfig`] and CLI and returns a list of
+    /// [`PlannedLink`]s.
+    ///
+    /// # Arguments
+    ///
+    /// - `root_config` - The initial config to plan with.
+    /// - `cli` - CLI flags to merge with [`PackageConfig`]s.
+    ///
+    /// # Errors
+    ///
+    /// An error is returned if one occurs while parsing nested [`PackageConfig`]s, converting old RON
+    /// configs to TOML, or walking the package tree.
+    pub fn plan_unboxing(
+        root_config: PackageConfig,
+        cli: &BoxUnboxCli,
+    ) -> Result<Self, PlanningError> {
+        let mut plan = Self {
+            links: Vec::new(),
+            efs: cli.existing_file_strategy,
+            create_dirs: !cli.no_create_dirs,
+        };
+
+        if root_config.link_root {
+            plan.links.push(PlannedLink {
+                src: root_config.package,
+                dest: root_config.target,
+                ty: root_config.link_type,
+            });
+            // root_config should already be merged with cli
+            return Ok(plan);
+        }
+        let targets = &mut plan.links;
+        let mut config_stack = vec![root_config];
+        let mut walker = walkdir::WalkDir::new(config_stack[0].package.clone())
+            .sort_by_file_name()
+            .into_iter();
+        // don't process root package, although keep it for later
+        let root_entry = walker.next().expect("walker should contain root entry")?;
+        while let Some(res) = walker.next() {
+            let entry = res?;
+            let file_name = entry.file_name().to_string_lossy();
+            let file_type = entry.file_type();
+            let should_be_ignored = config_stack
+                .iter()
+                .flat_map(|conf| conf.ignore_pats.clone())
+                .any(|re| re.is_match(&file_name));
+
+            if should_be_ignored {
+                if file_type.is_dir() {
+                    walker.skip_current_dir();
+                }
+                continue;
+            }
+
+            let entry_path = entry.path();
+            let current_config = config_stack
+                .last()
+                .expect("config_stack should not be empty");
+            // if we're not in the package defined by the current config, pop the config from the stack
+            if !entry_path.starts_with(&current_config.package) {
+                let _ = config_stack.pop().unwrap();
+            }
+
+            if file_type.is_dir() {
+                // read nested config
+                match PackageConfig::init(entry_path, cli) {
+                    Ok(config) => config_stack.push(config),
+                    Err(ConfigRead::FileNotFound(_)) => {}
+                    Err(err) => return Err(err.into()),
+                }
+
+                continue;
+            }
+
+            // ent is definitely a file at this point
+            // shadow current_config in case a new one was added
+            let current_config = config_stack
+                .last()
+                .expect("config_stack should not be empty");
+
+            let PackageConfig {
+                target, link_type, ..
+            } = current_config;
+
+            // don't use nested package to strip prefix or else the files will not be placed in
+            // the correct target directory.
+            // strip_prefix with root package: <target>/folder1/nested1.txt
+            // strip_prefix with nested package: <target>/nested1.txt
+            let path_tail = entry_path
+                .strip_prefix(root_entry.path())
+                .expect("entry_path should be prefixed by package");
+
+            targets.push(PlannedLink {
+                src: entry_path.to_path_buf(),
+                dest: target.join(path_tail),
+                ty: *link_type,
+            });
+        }
+
+        Ok(plan)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use anyhow::Context;
@@ -238,18 +268,27 @@ mod tests {
                 dest: expected_target.join(tail),
                 ty: LinkType::SymlinkAbsolute,
             })
-            .collect::<Vec<_>>();
-        let actual_plan = plan_unboxing(config, &cli)?;
+            .collect::<UnboxPlan>();
+        let actual_plan = UnboxPlan::plan_unboxing(config, &cli)?;
 
         assert_eq!(
-            expected_plan.len(),
-            actual_plan.len(),
+            expected_plan.create_dirs, actual_plan.create_dirs,
+            "unboxing plans disagree on create_dirs"
+        );
+        assert_eq!(
+            expected_plan.efs, actual_plan.efs,
+            "unboxing plan has unexpected file strategy"
+        );
+
+        assert_eq!(
+            expected_plan.links.len(),
+            actual_plan.links.len(),
             "unboxing plan has unexpected length"
         );
 
-        for pl in &actual_plan {
+        for pl in &actual_plan.links {
             assert!(
-                expected_plan.contains(pl),
+                expected_plan.links.contains(pl),
                 "unboxing plan contains unexpected planned link: {pl:?}"
             );
         }
@@ -299,18 +338,27 @@ mod tests {
                     ty: LinkType::SymlinkAbsolute,
                 }
             })
-            .collect::<Vec<_>>();
-        let actual_plan = plan_unboxing(config, &cli)?;
+            .collect::<UnboxPlan>();
+        let actual_plan = UnboxPlan::plan_unboxing(config, &cli)?;
 
         assert_eq!(
-            expected_plan.len(),
-            actual_plan.len(),
+            expected_plan.create_dirs, actual_plan.create_dirs,
+            "unboxing plans disagree on create_dirs"
+        );
+        assert_eq!(
+            expected_plan.efs, actual_plan.efs,
+            "unboxing plan has unexpected file strategy"
+        );
+
+        assert_eq!(
+            expected_plan.links.len(),
+            actual_plan.links.len(),
             "unboxing plan has unexpected length"
         );
 
-        for pl in &actual_plan {
+        for pl in &actual_plan.links {
             assert!(
-                expected_plan.contains(pl),
+                expected_plan.links.contains(pl),
                 "unboxing plan contains unexpected planned link: {pl:?}"
             );
 
@@ -341,18 +389,29 @@ mod tests {
             src: package_path.to_path_buf(),
             dest: expected_target.clone(),
             ty: LinkType::SymlinkAbsolute,
-        }];
-        let actual_plan = plan_unboxing(config, &cli)?;
+        }]
+        .into_iter()
+        .collect::<UnboxPlan>();
+        let actual_plan = UnboxPlan::plan_unboxing(config, &cli)?;
 
         assert_eq!(
-            expected_plan.len(),
-            actual_plan.len(),
+            expected_plan.create_dirs, actual_plan.create_dirs,
+            "unboxing plans disagree on create_dirs"
+        );
+        assert_eq!(
+            expected_plan.efs, actual_plan.efs,
+            "unboxing plan has unexpected file strategy"
+        );
+
+        assert_eq!(
+            expected_plan.links.len(),
+            actual_plan.links.len(),
             "unboxing plan has unexpected length"
         );
 
-        for pl in &actual_plan {
+        for pl in &actual_plan.links {
             assert!(
-                expected_plan.contains(pl),
+                expected_plan.links.contains(pl),
                 "unboxing plan contains unexpected planned link: {pl:?}"
             );
         }

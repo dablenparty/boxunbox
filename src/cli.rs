@@ -45,18 +45,19 @@ pub enum ColorOverride {
 
 /// Describes what to do if a target link already exists.
 #[derive(Copy, Clone, Debug, ValueEnum)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum ExistingFileStrategy {
-    /// Throw an error.
-    #[value(name = "error")]
-    ThrowError,
+    /// Overwrite the package with the target version. (destructive!)
+    Adopt,
     /// Ignore the link and continue.
     Ignore,
     /// Move the target link to `<target>.bak`.
     Move,
     /// Overwrite the target with the package version. (destructive!)
     Overwrite,
-    /// Overwrite the package with the target version. (destructive!)
-    Adopt,
+    /// Throw an error.
+    #[value(name = "error")]
+    ThrowError,
 }
 
 /// boxunbox is a symlinker inspired by GNU stow.
