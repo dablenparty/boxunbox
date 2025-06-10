@@ -56,8 +56,11 @@ fn __target_default() -> PathBuf {
 /// Describes what type of link to create.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, ValueEnum)]
 pub enum LinkType {
+    #[value(name = "absolute")]
     SymlinkAbsolute,
+    #[value(name = "relative")]
     SymlinkRelative,
+    #[value(name = "hard")]
     HardLink,
 }
 

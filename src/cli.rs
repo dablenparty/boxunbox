@@ -47,6 +47,7 @@ pub enum ColorOverride {
 #[derive(Copy, Clone, Debug, ValueEnum)]
 pub enum ExistingFileStrategy {
     /// Throw an error.
+    #[value(name = "error")]
     ThrowError,
     /// Ignore the link and continue.
     Ignore,
@@ -76,11 +77,12 @@ pub struct BoxUnboxCli {
     /// Ignore file names via regex. May be specified multiple times.
     #[arg(short, long = "ignore")]
     pub ignore_pats: Vec<Regex>,
-    #[arg(short = 'e', long = "if_target_exists")]
+    #[arg(short = 'e', long = "if_target_exists", default_value_t = ExistingFileStrategy::default())]
     pub existing_file_strategy: ExistingFileStrategy,
     /// Link the package directory itself.
     #[arg(short = 'r', long)]
     pub link_root: bool,
+    /// Type of symbolic (or hard) link to create.
     #[arg(short, long)]
     pub link_type: Option<LinkType>,
     /// Do not create directories at target locations.
@@ -115,6 +117,20 @@ impl Display for ColorOverride {
             ColorOverride::Always => "always",
             ColorOverride::Auto => "auto",
             ColorOverride::Never => "never",
+        };
+
+        write!(f, "{s}")
+    }
+}
+
+impl Display for ExistingFileStrategy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            ExistingFileStrategy::ThrowError => "error",
+            ExistingFileStrategy::Ignore => "ignore",
+            ExistingFileStrategy::Move => "move",
+            ExistingFileStrategy::Overwrite => "overwrite",
+            ExistingFileStrategy::Adopt => "adopt",
         };
 
         write!(f, "{s}")
