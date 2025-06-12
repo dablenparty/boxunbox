@@ -346,8 +346,81 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_unbox() {
-        todo!("test_unbox")
+    fn test_unbox() -> anyhow::Result<()> {
+        let package = make_tmp_tree().context("failed to make test package")?;
+        let package_path = package.path();
+
+        let target = tempfile::tempdir().context("failed to create temp target")?;
+        let target_path = target.path();
+
+        let expected_target = PathBuf::from(target_path);
+        let expected_plan = TEST_PACKAGE_FILE_TAILS
+            .iter()
+            .map(|tail| PlannedLink {
+                src: package_path.join(tail),
+                dest: expected_target.join(tail),
+                ty: LinkType::SymlinkAbsolute,
+            })
+            .collect::<UnboxPlan>();
+
+        assert_eq!(
+            expected_plan.efs,
+            ExistingFileStrategy::ThrowError,
+            "unboxing plan has unexpected {}",
+            stringify!(ExistingFileStrategy)
+        );
+
+        expected_plan.unbox()?;
+
+        for link in expected_plan.links {
+            let PlannedLink { src, dest, .. } = link;
+
+            assert!(
+                dest.try_exists()
+                    .with_context(|| format!("failed to verify existence of {}", dest.display()))?,
+                "{} does not exist",
+                dest.display()
+            );
+
+            assert!(dest.is_symlink(), "{} is not a symlink", dest.display());
+
+            let actual_link_target = fs::read_link(&dest)
+                .with_context(|| format!("failed to read link info for {}", dest.display()))?;
+            assert_eq!(
+                src,
+                actual_link_target,
+                "{} does not point to {}",
+                actual_link_target.display(),
+                src.display()
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_unbox_efs_adopt() {
+        todo!()
+    }
+
+    #[test]
+    fn test_unbox_efs_ignore() {
+        todo!()
+    }
+
+    #[test]
+    fn test_unbox_efs_move() {
+        todo!()
+    }
+
+    #[test]
+    fn test_unbox_efs_overwrite() {
+        todo!()
+    }
+
+    #[test]
+    fn test_unbox_efs_throwerror() {
+        todo!()
     }
 
     #[test]
