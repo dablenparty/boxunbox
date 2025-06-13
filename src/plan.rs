@@ -401,7 +401,84 @@ mod tests {
     }
 
     #[test]
-    fn test_unbox_efs_adopt() {
+    fn test_unbox_efs_adopt_file() -> anyhow::Result<()> {
+        const EXISTING_TARGET_FILE_CONTENTS: &str = "i already exist";
+
+        let package = make_tmp_tree().context("failed to make test package")?;
+        let package_path = package.path();
+
+        let target = tempfile::tempdir().context("failed to create temp target")?;
+        let target_path = target.path();
+        let expected_target = PathBuf::from(target_path);
+
+        let test_file_tail = TEST_PACKAGE_FILE_TAILS[0];
+        let expected_pl = PlannedLink {
+            src: package_path.join(test_file_tail),
+            dest: expected_target.join(test_file_tail),
+            ty: LinkType::SymlinkAbsolute,
+        };
+        // create the file in it's own scope to close file descriptor asap
+        {
+            let parent = expected_pl.dest.parent().with_context(|| {
+                format!("failed to get parent of {}", expected_pl.dest.display())
+            })?;
+            fs::create_dir_all(parent).context("failed to create test target parent")?;
+            fs::File::create_new(&expected_pl.dest)
+                .context("failed to create test target file")?
+                .write_all(EXISTING_TARGET_FILE_CONTENTS.as_bytes())?;
+        }
+        let mut expected_plan = TEST_PACKAGE_FILE_TAILS
+            .iter()
+            .map(|tail| PlannedLink {
+                src: package_path.join(tail),
+                dest: expected_target.join(tail),
+                ty: LinkType::SymlinkAbsolute,
+            })
+            .collect::<UnboxPlan>();
+        expected_plan.efs = ExistingFileStrategy::Adopt;
+
+        let unbox_result = expected_plan.unbox();
+        assert!(
+            unbox_result.is_ok(),
+            "unboxing failed with unexpected error {:?}",
+            unbox_result.unwrap_err()
+        );
+
+        for link in expected_plan.links {
+            // this one is already handled; skip it
+            if link == expected_pl {
+                // src needs to match too
+                let src_contents =
+                    fs::read_to_string(&link.src).context("failed to read test src file")?;
+                assert_eq!(
+                    EXISTING_TARGET_FILE_CONTENTS, src_contents,
+                    "test src file has unexpected file contents '{src_contents:?}'"
+                );
+                let dest_contents = fs::read_to_string(&link.dest)
+                    .context("failed to read existing target file")?;
+                // proves src == dest by transitivity
+                assert_eq!(
+                    EXISTING_TARGET_FILE_CONTENTS, dest_contents,
+                    "existing target file has unexpected file contents '{dest_contents:?}'"
+                );
+                continue;
+            }
+
+            let PlannedLink { dest, .. } = link;
+
+            assert!(
+                dest.try_exists()
+                    .with_context(|| format!("failed to verify existence of {}", dest.display()))?,
+                "{} exists",
+                dest.display()
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_unbox_efs_adopt_symlink() -> anyhow::Result<()> {
         todo!()
     }
 
