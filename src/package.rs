@@ -1,4 +1,9 @@
-use std::{fmt::Display, fs, path::PathBuf, sync::LazyLock};
+use std::{
+    fmt::Display,
+    fs,
+    path::{Path, PathBuf},
+    sync::LazyLock,
+};
 
 use clap::ValueEnum;
 use const_format::formatc;
@@ -233,6 +238,11 @@ impl PackageConfig {
         ".bub.toml"
     }
 
+    /// File name this struct will serialize to when saving to an OS-specific config.
+    const fn __serde_os_file_name() -> &'static str {
+        formatc!(".bub.{}.toml", std::env::consts::OS)
+    }
+
     /// Create a new [`PackageConfig`] with the given `package` and default values.
     ///
     /// # Arguments
@@ -280,8 +290,15 @@ impl PackageConfig {
     /// malformed TOML data.
     pub fn try_from_package<P: Into<PathBuf>>(package: P) -> Result<Self, error::ConfigRead> {
         // TODO: if old config exists (.unboxrc.ron), replace it with a toml file
-        let package = package.into();
-        let toml_path = package.join(Self::__serde_file_name());
+        let package: PathBuf = package.into();
+        // OS-specific configs always take precedence
+        let os_toml_path = package.join(Self::__serde_os_file_name());
+        let toml_path = if os_toml_path.try_exists().unwrap_or(false) {
+            os_toml_path
+        } else {
+            package.join(Self::__serde_file_name())
+        };
+
         Self::try_from(toml_path)
     }
 
@@ -325,7 +342,30 @@ impl PackageConfig {
     /// Get the disk path for this `PackageConfig`.
     #[inline]
     fn disk_path(&self) -> PathBuf {
-        self.package.join(PackageConfig::__serde_file_name())
+        self.package.join(Self::__serde_file_name())
+    }
+
+    fn os_disk_path(&self) -> PathBuf {
+        self.package.join(Self::__serde_os_file_name())
+    }
+
+    /// Utility function for saving this [`PackageConfig`] to a given path.
+    ///
+    /// # Arguments
+    ///
+    /// - `config_path` - [`Path`] to serialize this config to.
+    fn __inner_save_to_package<P: AsRef<Path>>(
+        &self,
+        config_path: P,
+    ) -> Result<(), error::ConfigWrite> {
+        let config_path = config_path.as_ref();
+        let config_str = toml::to_string_pretty(self)?;
+        // WARN: this truncates the existing file. be careful!
+        fs::write(config_path, config_str).map_err(|err| error::ConfigWrite::Io {
+            source: err,
+            path: config_path.to_path_buf(),
+        })?;
+        Ok(())
     }
 
     /// Save this `PackageConfig` to a package directory.
@@ -335,14 +375,13 @@ impl PackageConfig {
     /// An error will be returned if the config fails to serialize or the file cannot be
     /// written to for some reason.
     pub fn save_to_package(&self) -> Result<(), error::ConfigWrite> {
-        let config_path = self.disk_path();
-        let config_str = toml::to_string_pretty(self)?;
-        // WARN: this truncates the existing file. be careful!
-        fs::write(&config_path, config_str).map_err(|err| error::ConfigWrite::Io {
-            source: err,
-            path: config_path,
-        })?;
-        Ok(())
+        self.__inner_save_to_package(self.disk_path())
+    }
+
+    /// Save this `PackageConfig` to a package as an OS-specific config. This uses
+    /// [`std::env::consts::OS`] at runtime to determine which system the user is on.
+    pub fn save_to_os_package(&self) -> Result<(), error::ConfigWrite> {
+        self.__inner_save_to_package(self.os_disk_path())
     }
 }
 
@@ -358,6 +397,50 @@ mod tests {
     fn test_try_from_package() -> anyhow::Result<()> {
         let package = make_tmp_tree().context("failed to make test package")?;
         let package_path = package.path();
+        let conf = PackageConfig::try_from_package(package_path)
+            .context("failed to create package config from package")?;
+
+        assert_eq!(conf.package, package_path);
+        assert_eq!(conf.target, PathBuf::from(TEST_TARGET));
+        let expected_ignore_pats = __ignore_pats_default();
+        assert!(
+            conf.ignore_pats.len() == expected_ignore_pats.len()
+                && conf
+                    .ignore_pats
+                    .iter()
+                    .zip(expected_ignore_pats)
+                    .all(|(a, b)| a.as_str() == b.as_str())
+        );
+        assert!(!conf.link_root);
+        assert_eq!(conf.link_type, LinkType::SymlinkAbsolute);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_try_from_os_package() -> anyhow::Result<()> {
+        let package = make_tmp_tree().context("failed to make test package")?;
+        let package_path = package.path();
+        let config_path = package_path.join(PackageConfig::__serde_file_name());
+        let expected_config_path = package_path.join(PackageConfig::__serde_os_file_name());
+        fs::rename(&config_path, &expected_config_path)
+            .context("failed to move test config to OS config")?;
+        assert!(
+            !config_path.try_exists().with_context(|| format!(
+                "failed to verify existence of {}",
+                config_path.display()
+            ))?,
+            "unexpected config file at {}",
+            config_path.display()
+        );
+        assert!(
+            expected_config_path.try_exists().with_context(|| format!(
+                "failed to verify existence of {}",
+                expected_config_path.display()
+            ))?,
+            "expected config file at {}",
+            expected_config_path.display()
+        );
         let conf = PackageConfig::try_from_package(package_path)
             .context("failed to create package config from package")?;
 
@@ -421,6 +504,32 @@ mod tests {
         conf.save_to_package()
             .context("failed to save config to test package")?;
         let conf_path = package.path().join(PackageConfig::__serde_file_name());
+        let expected_conf_str =
+            toml::to_string_pretty(&conf).context("failed to serialize test config")?;
+        let actual_conf_str =
+            std::fs::read_to_string(&conf_path).context("failed to read test config")?;
+
+        assert!(
+            conf_path
+                .try_exists()
+                .context("failed to verify existence of test config")?,
+            "test config file could not be found"
+        );
+        assert_eq!(
+            expected_conf_str, actual_conf_str,
+            "contents of test config file do not match serialized test config"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_save_to_os_package() -> anyhow::Result<()> {
+        let package = tempfile::tempdir().context("failed to make test package")?;
+        let conf = PackageConfig::new(package.path());
+        conf.save_to_os_package()
+            .context("failed to save config to test package")?;
+        let conf_path = package.path().join(PackageConfig::__serde_os_file_name());
         let expected_conf_str =
             toml::to_string_pretty(&conf).context("failed to serialize test config")?;
         let actual_conf_str =

@@ -60,10 +60,11 @@ fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
     #[cfg(debug_assertions)]
     println!("{config:#?}");
 
-    if cli.save_config {
+    // OS config always takes precedence
+    if cli.save_os_config {
+        config.save_to_os_package()?;
+    } else if cli.save_config {
         config.save_to_package()?;
-    } else if cli.save_os_config {
-        todo!("save_os_config");
     }
 
     let unboxing_plan = UnboxPlan::plan_unboxing(config, cli)?;
