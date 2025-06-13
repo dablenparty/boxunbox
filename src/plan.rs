@@ -257,13 +257,7 @@ impl UnboxPlan {
                     }
                     ExistingFileStrategy::Adopt => {
                         // TODO: force adopt symlink with CLI flag?
-                        // FIXME: throw an error
-                        eprintln!(
-                            "{}: ignoring {} (cannot adopt symlink)",
-                            "warn".yellow(),
-                            replace_home_with_tilde(dest)
-                        );
-                        continue;
+                        return Err(UnboxError::AdoptSymlink(pl.clone()));
                     }
                     ExistingFileStrategy::Ignore => {
                         eprintln!(
@@ -487,7 +481,76 @@ mod tests {
 
     #[test]
     fn test_unbox_efs_adopt_symlink() -> anyhow::Result<()> {
-        todo!()
+        const EXISTING_TARGET_FILE_CONTENTS: &str = "i already exist";
+
+        let package = make_tmp_tree().context("failed to make test package")?;
+        let package_path = package.path();
+
+        let target = tempfile::tempdir().context("failed to create temp target")?;
+        let target_path = target.path();
+        let expected_target = PathBuf::from(target_path);
+
+        let test_file_tail = TEST_PACKAGE_FILE_TAILS[0];
+        let expected_pl = PlannedLink {
+            src: package_path.join(test_file_tail),
+            dest: expected_target.join(test_file_tail),
+            ty: LinkType::SymlinkAbsolute,
+        };
+        // create the file in it's own scope to close file descriptor asap
+        {
+            let parent = expected_pl.dest.parent().with_context(|| {
+                format!("failed to get parent of {}", expected_pl.dest.display())
+            })?;
+            fs::create_dir_all(parent).context("failed to create test target parent")?;
+            os_symlink(&expected_pl.src, &expected_pl.dest)
+                .context("failed to create test symlink")?;
+        }
+        let mut expected_plan = TEST_PACKAGE_FILE_TAILS
+            .iter()
+            .map(|tail| PlannedLink {
+                src: package_path.join(tail),
+                dest: expected_target.join(tail),
+                ty: LinkType::SymlinkAbsolute,
+            })
+            .collect::<UnboxPlan>();
+        expected_plan.efs = ExistingFileStrategy::Adopt;
+
+        let unbox_result = expected_plan.unbox();
+        assert!(unbox_result.is_err(), "unboxing succeeded unexpectedly");
+
+        match unbox_result.unwrap_err() {
+            UnboxError::AdoptSymlink(actual_pl) => {
+                assert_eq!(
+                    expected_pl, actual_pl,
+                    "unboxing failed to adopt unexepected link {actual_pl:?}"
+                );
+            }
+            err => panic!("unboxing failed with unexpected error: {err:?}"),
+        }
+
+        for link in expected_plan.links {
+            if link == expected_pl {
+                let src_contents =
+                    fs::read_to_string(&link.src).context("failed to read test src file")?;
+                assert_ne!(
+                    EXISTING_TARGET_FILE_CONTENTS, src_contents,
+                    "test src file has unexpected file contents '{src_contents:?}'"
+                );
+                continue;
+            }
+
+            let PlannedLink { dest, .. } = link;
+
+            assert!(
+                !dest
+                    .try_exists()
+                    .with_context(|| format!("failed to verify existence of {}", dest.display()))?,
+                "{} exists",
+                dest.display()
+            );
+        }
+
+        Ok(())
     }
 
     #[test]
