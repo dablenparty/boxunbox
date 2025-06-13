@@ -18,6 +18,8 @@ pub enum PlanningError {
 
 #[derive(Debug, ThisError)]
 pub enum UnboxError {
+    #[error("cannot adopt symlink from {0}")]
+    AdoptSymlink(PlannedLink),
     #[error("failed to parse package config: {0}")]
     ConfigParse(#[from] ConfigRead),
     #[warn(deprecated_in_future)]
