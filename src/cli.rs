@@ -78,6 +78,7 @@ pub struct BoxUnboxCli {
     /// Ignore file names via regex. May be specified multiple times.
     #[arg(short, long = "ignore")]
     pub ignore_pats: Vec<Regex>,
+    /// What to do if a target link already exists.
     #[arg(short = 'e', long = "if_target_exists", default_value_t = ExistingFileStrategy::default())]
     pub existing_file_strategy: ExistingFileStrategy,
     /// Link the package directory itself.
