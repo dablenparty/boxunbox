@@ -385,9 +385,7 @@ mod tests {
                 "{} does not exist",
                 dest.display()
             );
-
-            assert!(dest.is_symlink(), "{} is not a symlink", dest.display());
-
+            assert!(dest.is_symlink(), "expected symlink at {}", dest.display());
             let actual_link_target = fs::read_link(&dest)
                 .with_context(|| format!("failed to read link info for {}", dest.display()))?;
             assert_eq!(
@@ -465,7 +463,7 @@ mod tests {
                 continue;
             }
 
-            let PlannedLink { dest, .. } = link;
+            let PlannedLink { src, dest, .. } = link;
 
             assert!(
                 dest.try_exists()
@@ -474,6 +472,15 @@ mod tests {
                 dest.display()
             );
             assert!(dest.is_symlink(), "expected symlink at {}", dest.display());
+            let actual_link_target = fs::read_link(&dest)
+                .with_context(|| format!("failed to read link info for {}", dest.display()))?;
+            assert_eq!(
+                src,
+                actual_link_target,
+                "{} does not point to {}",
+                actual_link_target.display(),
+                src.display()
+            );
         }
 
         Ok(())
@@ -615,7 +622,7 @@ mod tests {
                 continue;
             }
 
-            let PlannedLink { dest, .. } = link;
+            let PlannedLink { src, dest, .. } = link;
 
             assert!(
                 dest.try_exists()
@@ -624,6 +631,15 @@ mod tests {
                 dest.display()
             );
             assert!(dest.is_symlink(), "expected symlink at {}", dest.display());
+            let actual_link_target = fs::read_link(&dest)
+                .with_context(|| format!("failed to read link info for {}", dest.display()))?;
+            assert_eq!(
+                src,
+                actual_link_target,
+                "{} does not point to {}",
+                actual_link_target.display(),
+                src.display()
+            );
         }
 
         Ok(())
