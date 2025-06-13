@@ -225,6 +225,7 @@ impl UnboxPlan {
         Ok(plan)
     }
 
+    #[allow(clippy::too_many_lines)]
     pub fn unbox(&self) -> Result<(), UnboxError> {
         for pl in &self.links {
             let PlannedLink { src, dest, ty } = &pl;
@@ -248,8 +249,15 @@ impl UnboxPlan {
                             pl: pl.clone(),
                             source: err,
                         })?;
+                        // remove `dest` so that it can be replaced by a link
+                        fs::remove_file(dest).map_err(|err| UnboxError::Io {
+                            pl: pl.clone(),
+                            source: err,
+                        })?;
                     }
                     ExistingFileStrategy::Adopt => {
+                        // TODO: force adopt symlink with CLI flag?
+                        // FIXME: throw an error
                         eprintln!(
                             "{}: ignoring {} (cannot adopt symlink)",
                             "warn".yellow(),
@@ -445,7 +453,6 @@ mod tests {
         );
 
         for link in expected_plan.links {
-            // this one is already handled; skip it
             if link == expected_pl {
                 // src needs to match too
                 let src_contents =
