@@ -239,7 +239,6 @@ impl UnboxPlan {
                 source: err,
             })? {
                 // TODO: put messages behind --verbose flag (idk how to go about this)
-                // TODO: test ALL OF THESE!!!!
                 match self.efs {
                     ExistingFileStrategy::Adopt if !dest.is_symlink() => {
                         // If dest is a symlink, it might point to the src file, which means we'd

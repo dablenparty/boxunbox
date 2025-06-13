@@ -301,7 +301,6 @@ impl PackageConfig {
     /// An error will be returned if the config file does not exist, cannot be read, or contains
     /// malformed TOML data.
     pub fn try_from_package<P: Into<PathBuf>>(package: P) -> Result<Self, error::ConfigRead> {
-        // TODO: if old config exists (.unboxrc.ron), replace it with a toml file
         let package: PathBuf = package.into();
         // OS-specific configs always take precedence
         let os_toml_path = package.join(Self::__serde_os_file_name());
