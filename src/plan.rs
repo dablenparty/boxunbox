@@ -97,11 +97,15 @@ impl PlannedLink {
     ///
     /// An error will be returned if the `dest` parent cannot be created, if [`os_symlink`] fails
     /// to create a symbolic link, or if [`hard_link`] fails to create a hard link.
-    pub fn unbox(&self) -> io::Result<()> {
+    pub fn unbox(&self, create_dirs: bool) -> io::Result<()> {
         let Self { src, dest, ty } = self;
 
-        let target_parent = dest.parent().expect("dest should be a file");
-        fs::create_dir_all(target_parent)?;
+        if create_dirs {
+            let target_parent = dest
+                .parent()
+                .expect("dest should be an absolute path to a file");
+            fs::create_dir_all(target_parent)?;
+        }
 
         match ty {
             LinkType::SymlinkAbsolute => {
@@ -228,7 +232,7 @@ impl UnboxPlan {
     #[allow(clippy::too_many_lines)]
     pub fn unbox(&self) -> Result<(), UnboxError> {
         for pl in &self.links {
-            let PlannedLink { src, dest, ty } = &pl;
+            let PlannedLink { src, dest, .. } = &pl;
 
             if dest.try_exists().map_err(|err| UnboxError::Io {
                 pl: pl.clone(),
@@ -301,37 +305,10 @@ impl UnboxPlan {
                 }
             }
 
-            if self.create_dirs {
-                let target_parent = dest.parent().expect("dest should be a file");
-                fs::create_dir_all(target_parent).map_err(|err| UnboxError::Io {
-                    pl: pl.clone(),
-                    source: err,
-                })?;
-            }
-
-            match ty {
-                LinkType::SymlinkAbsolute => {
-                    os_symlink(src, dest).map_err(|err| UnboxError::Io {
-                        pl: pl.clone(),
-                        source: err,
-                    })?;
-                }
-                LinkType::SymlinkRelative => {
-                    let relative_src = pl.get_src_relative_to_dest();
-                    os_symlink(relative_src, dest).map_err(|err| UnboxError::Io {
-                        pl: pl.clone(),
-                        source: err,
-                    })?;
-                }
-                LinkType::HardLink => {
-                    fs::hard_link(src, dest).map_err(|err| UnboxError::Io {
-                        pl: pl.clone(),
-                        source: err,
-                    })?;
-                }
-            }
-
-            println!("unboxed {pl}");
+            pl.unbox(self.create_dirs).map_err(|err| UnboxError::Io {
+                pl: pl.clone(),
+                source: err,
+            })?;
         }
 
         Ok(())
