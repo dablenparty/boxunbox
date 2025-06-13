@@ -472,6 +472,7 @@ mod tests {
                 "{} exists",
                 dest.display()
             );
+            assert!(dest.is_symlink(), "expected symlink at {}", dest.display());
         }
 
         Ok(())
@@ -552,6 +553,7 @@ mod tests {
                 "{} exists",
                 dest.display()
             );
+            assert!(dest.is_symlink(), "expected symlink at {}", dest.display());
         }
 
         Ok(())
