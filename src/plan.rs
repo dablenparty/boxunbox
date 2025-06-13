@@ -1176,6 +1176,64 @@ mod tests {
     }
 
     #[test]
+    fn test_plan_unboxing_ignored_dir() -> anyhow::Result<()> {
+        let package = make_tmp_tree().context("failed to make test package")?;
+        let package_path = package.path();
+        let test_regex = Regex::new("^folder1$").expect("test regex should compile");
+        let mut cli = BoxUnboxCli::new(package_path);
+        cli.ignore_pats.push(test_regex.clone());
+        let config = PackageConfig::init(package_path, &cli)
+            .context("failed to create test package config")?;
+
+        let expected_target = PathBuf::from(TEST_TARGET);
+        let expected_plan = TEST_PACKAGE_FILE_TAILS
+            .iter()
+            .map(|tail| PlannedLink {
+                src: package_path.join(tail),
+                dest: expected_target.join(tail),
+                ty: LinkType::SymlinkAbsolute,
+            })
+            .filter(|pl| {
+                // only keep links whose source path components don't match the test regex
+                !pl.src
+                    .components()
+                    .any(|c| test_regex.is_match(&c.as_os_str().to_string_lossy()))
+            })
+            .collect::<UnboxPlan>();
+        let actual_plan = UnboxPlan::plan_unboxing(config, &cli)?;
+
+        assert_eq!(
+            expected_plan.create_dirs, actual_plan.create_dirs,
+            "unboxing plans disagree on create_dirs"
+        );
+        assert_eq!(
+            expected_plan.efs, actual_plan.efs,
+            "unboxing plan has unexpected file strategy"
+        );
+
+        assert_eq!(
+            expected_plan.links.len(),
+            actual_plan.links.len(),
+            "unboxing plan has unexpected length"
+        );
+
+        for pl in &actual_plan.links {
+            assert!(
+                !pl.src
+                    .components()
+                    .any(|c| test_regex.is_match(&c.as_os_str().to_string_lossy())),
+                "unboxing plan contains ignored link {pl:?}"
+            );
+            assert!(
+                expected_plan.links.contains(pl),
+                "unboxing plan contains unexpected planned link: {pl:?}"
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
     fn test_plan_unbox_root() -> anyhow::Result<()> {
         let package = make_tmp_tree().context("failed to make test package")?;
         let package_path = package.path();
