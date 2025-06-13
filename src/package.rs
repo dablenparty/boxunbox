@@ -230,6 +230,18 @@ impl OldPackageConfig {
     const fn __os_rc_file_name() -> &'static str {
         formatc!(".unboxrc.{}.ron", std::env::consts::OS)
     }
+
+    #[cfg(test)]
+    fn save_to_disk<P: AsRef<Path>>(&self, config_path: P) -> anyhow::Result<()> {
+        use ron::ser::PrettyConfig;
+
+        let config_path = config_path.as_ref();
+
+        let ron_str = ron::ser::to_string_pretty(self, PrettyConfig::new().struct_names(true))?;
+        fs::write(config_path, ron_str)?;
+
+        Ok(())
+    }
 }
 
 impl PackageConfig {
@@ -359,6 +371,7 @@ impl PackageConfig {
         config_path: P,
     ) -> Result<(), error::ConfigWrite> {
         let config_path = config_path.as_ref();
+        // TODO: replace $HOME in paths with ~
         let config_str = toml::to_string_pretty(self)?;
         // WARN: this truncates the existing file. be careful!
         fs::write(config_path, config_str).map_err(|err| error::ConfigWrite::Io {
@@ -558,6 +571,30 @@ mod tests {
         let actual = PackageConfig::from_old_package(package_path, old_config);
 
         assert_eq!(expected, actual);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_from_old_package_file() -> anyhow::Result<()> {
+        let package = tempfile::tempdir().context("failed to make test package")?;
+        let package_path = package.path();
+        let target = tempfile::tempdir().context("failed to make test target")?;
+        let target_path = target.path();
+        let old_config_path = package_path.join(OldPackageConfig::__rc_file_name());
+        let old_config = OldPackageConfig {
+            target: target_path.to_path_buf(),
+            ..Default::default()
+        };
+        old_config
+            .save_to_disk(old_config_path)
+            .context("failed to save test old config")?;
+
+        let actual_old_config = OldPackageConfig::try_from(package_path.to_path_buf())?;
+        let expected_config = PackageConfig::new_with_target(package_path, target_path);
+        let actual_config = PackageConfig::from_old_package(package_path, actual_old_config);
+
+        assert_eq!(expected_config, actual_config);
 
         Ok(())
     }
