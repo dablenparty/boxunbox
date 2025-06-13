@@ -350,7 +350,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_unbox() -> anyhow::Result<()> {
+    fn test_unbox_default() -> anyhow::Result<()> {
         let package = make_tmp_tree().context("failed to make test package")?;
         let package_path = package.path();
 
@@ -363,13 +363,13 @@ mod tests {
             .map(|tail| PlannedLink {
                 src: package_path.join(tail),
                 dest: expected_target.join(tail),
-                ty: LinkType::SymlinkAbsolute,
+                ty: LinkType::default(),
             })
             .collect::<UnboxPlan>();
 
         assert_eq!(
             expected_plan.efs,
-            ExistingFileStrategy::ThrowError,
+            ExistingFileStrategy::default(),
             "unboxing plan has unexpected {}",
             stringify!(ExistingFileStrategy)
         );
