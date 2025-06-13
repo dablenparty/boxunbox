@@ -401,6 +401,172 @@ mod tests {
     }
 
     #[test]
+    fn test_unbox_absolute_symlinks() -> anyhow::Result<()> {
+        // NOTE: this test is kinda a repeat of test_unbox_default, but if I ever change the
+        let package = make_tmp_tree().context("failed to make test package")?;
+        let package_path = package.path();
+
+        let target = tempfile::tempdir().context("failed to create temp target")?;
+        let target_path = target.path();
+
+        let expected_target = PathBuf::from(target_path);
+        let expected_plan = TEST_PACKAGE_FILE_TAILS
+            .iter()
+            .map(|tail| PlannedLink {
+                src: package_path.join(tail),
+                dest: expected_target.join(tail),
+                ty: LinkType::SymlinkAbsolute,
+            })
+            .collect::<UnboxPlan>();
+
+        assert_eq!(
+            expected_plan.efs,
+            ExistingFileStrategy::ThrowError,
+            "unboxing plan has unexpected {}",
+            stringify!(ExistingFileStrategy)
+        );
+
+        expected_plan
+            .unbox()
+            .context("failed to unbox test package")?;
+
+        for link in expected_plan.links {
+            let PlannedLink { src, dest, .. } = link;
+
+            assert!(
+                dest.try_exists()
+                    .with_context(|| format!("failed to verify existence of {}", dest.display()))?,
+                "{} does not exist",
+                dest.display()
+            );
+            assert!(dest.is_symlink(), "expected symlink at {}", dest.display());
+            let actual_link_target = fs::read_link(&dest)
+                .with_context(|| format!("failed to read link info for {}", dest.display()))?;
+            assert_eq!(
+                src,
+                actual_link_target,
+                "{} does not point to {}",
+                actual_link_target.display(),
+                src.display()
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_unbox_relative_symlinks() -> anyhow::Result<()> {
+        // NOTE: this test is kinda a repeat of test_unbox_default, but if I ever change the
+        let package = make_tmp_tree().context("failed to make test package")?;
+        let package_path = package.path();
+
+        let target = tempfile::tempdir().context("failed to create temp target")?;
+        let target_path = target.path();
+
+        let expected_target = PathBuf::from(target_path);
+        let expected_plan = TEST_PACKAGE_FILE_TAILS
+            .iter()
+            .map(|tail| PlannedLink {
+                src: package_path.join(tail),
+                dest: expected_target.join(tail),
+                ty: LinkType::SymlinkRelative,
+            })
+            .collect::<UnboxPlan>();
+
+        assert_eq!(
+            expected_plan.efs,
+            ExistingFileStrategy::ThrowError,
+            "unboxing plan has unexpected {}",
+            stringify!(ExistingFileStrategy)
+        );
+
+        expected_plan
+            .unbox()
+            .context("failed to unbox test package")?;
+
+        for link in expected_plan.links {
+            let relative_src = link.get_src_relative_to_dest();
+            let PlannedLink { dest, .. } = link;
+
+            assert!(
+                dest.try_exists()
+                    .with_context(|| format!("failed to verify existence of {}", dest.display()))?,
+                "{} does not exist",
+                dest.display()
+            );
+            assert!(dest.is_symlink(), "expected symlink at {}", dest.display());
+            let actual_link_target = fs::read_link(&dest)
+                .with_context(|| format!("failed to read link info for {}", dest.display()))?;
+            assert_eq!(
+                relative_src,
+                actual_link_target,
+                "{} does not point to {}",
+                actual_link_target.display(),
+                relative_src.display()
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_unbox_hard_links() -> anyhow::Result<()> {
+        // NOTE: this test is kinda a repeat of test_unbox_default, but if I ever change the
+        let package = make_tmp_tree().context("failed to make test package")?;
+        let package_path = package.path();
+
+        let target = tempfile::tempdir().context("failed to create temp target")?;
+        let target_path = target.path();
+
+        let expected_target = PathBuf::from(target_path);
+        let expected_plan = TEST_PACKAGE_FILE_TAILS
+            .iter()
+            .map(|tail| PlannedLink {
+                src: package_path.join(tail),
+                dest: expected_target.join(tail),
+                ty: LinkType::HardLink,
+            })
+            .collect::<UnboxPlan>();
+
+        assert_eq!(
+            expected_plan.efs,
+            ExistingFileStrategy::ThrowError,
+            "unboxing plan has unexpected {}",
+            stringify!(ExistingFileStrategy)
+        );
+
+        expected_plan
+            .unbox()
+            .context("failed to unbox test package")?;
+
+        for link in expected_plan.links {
+            let PlannedLink { src, dest, .. } = link;
+
+            assert!(
+                dest.try_exists()
+                    .with_context(|| format!("failed to verify existence of {}", dest.display()))?,
+                "{} does not exist",
+                dest.display()
+            );
+            assert!(
+                dest.is_file(),
+                "expected hard link (i.e. file) at {}",
+                dest.display()
+            );
+            let src_contents = fs::read_to_string(&src)
+                .with_context(|| format!("failed to read test src {}", src.display()))?;
+            let dest_contents = fs::read_to_string(&dest)
+                .with_context(|| format!("failed to read test dest {}", dest.display()))?;
+            assert_eq!(
+                src_contents, dest_contents,
+                "target hard link has unexpected file contents '{dest_contents:?}'"
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
     fn test_unbox_efs_adopt_file() -> anyhow::Result<()> {
         const EXISTING_TARGET_FILE_CONTENTS: &str = "i already exist";
 
