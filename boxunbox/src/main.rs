@@ -3,21 +3,12 @@
 use std::path::Path;
 
 use anyhow::Context;
+use boxunbox::cli::{BoxUnboxCli, ColorOverride};
+use boxunbox::error::UnboxError;
+use boxunbox::package::{self, OldPackageConfig, PackageConfig};
+use boxunbox::plan::UnboxPlan;
 use clap::Parser;
-use cli::{BoxUnboxCli, ColorOverride};
 use colored::Colorize;
-use error::UnboxError;
-use package::{OldPackageConfig, PackageConfig};
-use plan::UnboxPlan;
-
-mod cli;
-mod constants;
-mod error;
-mod package;
-mod plan;
-mod utils;
-
-mod test_utils;
 
 /// Unbox the package.
 ///
