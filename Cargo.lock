@@ -109,6 +109,7 @@ dependencies = [
 name = "boxunbox-mangen"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "boxunbox",
  "clap",
  "clap_mangen",

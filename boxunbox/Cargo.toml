@@ -17,7 +17,7 @@ name = "unbox"
 path = "src/main.rs"
 
 [dependencies]
-anyhow = "1.0.98"
+anyhow.workspace = true
 clap.workspace = true
 colored = "3.0.0"
 const_format = { version = "0.2.34", features = ["fmt"] }

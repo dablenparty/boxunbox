@@ -8,6 +8,7 @@ name = "mangen"
 path = "src/main.rs"
 
 [dependencies]
+anyhow.workspace = true
 boxunbox = { version = "*", path = "../boxunbox" }
 clap.workspace = true
 clap_mangen = "0.2.27"
