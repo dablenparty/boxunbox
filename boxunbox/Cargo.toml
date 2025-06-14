@@ -9,13 +9,16 @@ repository = "https://github.com/dablenparty/boxunbox"
 categories = ["command-line-utilities", "filesystem"]
 default-run = "unbox"
 
+[lib]
+name = "boxunbox"
+
 [[bin]]
 name = "unbox"
 path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.98"
-clap = { version = "4.5.40", features = ["derive", "cargo", "unicode"] }
+clap.workspace = true
 colored = "3.0.0"
 const_format = { version = "0.2.34", features = ["fmt"] }
 directories-next = "2.0.0"

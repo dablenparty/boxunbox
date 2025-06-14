@@ -3,6 +3,9 @@ resolver = "3"
 members = ["boxunbox", "boxunbox-mangen"]
 exclude = ["aur/*", "demo/*", "*.sh"]
 
+[workspace.dependencies]
+clap = { version = "4.5.40", features = ["derive", "cargo", "unicode"] }
+
 [profile.dev]
 opt-level = 0
 debug = true
