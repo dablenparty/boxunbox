@@ -2,8 +2,8 @@
 name = "boxunbox"
 version = "0.1.26"
 edition = "2024"
-license-file = "LICENSE"
-readme = "README.md"
+license-file = "../LICENSE"
+readme = "../README.md"
 description = "A simple symlinker inspired by GNU stow"
 repository = "https://github.com/dablenparty/boxunbox"
 categories = ["command-line-utilities", "filesystem"]
