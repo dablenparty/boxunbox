@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["boxunbox"]
+members = ["boxunbox", "boxunbox-mangen"]
 exclude = ["aur/*", "demo/*", "*.sh"]
 
 [profile.dev]
