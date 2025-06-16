@@ -38,8 +38,11 @@ fn cli_parse_pathbuf(s: &str) -> Result<PathBuf, String> {
 /// Override the color setting. Default is [`ColorOverride::Auto`].
 #[derive(Copy, Clone, Debug, ValueEnum)]
 pub enum ColorOverride {
+    /// Always display color (i.e. force it).
     Always,
+    /// Automatically determine if color should be used or not.
     Auto,
+    /// Never display color.
     Never,
 }
 
@@ -67,7 +70,7 @@ pub enum ExistingFileStrategy {
 #[command(about, long_about = None, styles=__cli_styles(), version)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct BoxUnboxCli {
-    /// Package (directory) to unbox. Specify multiple to unbox multiple.
+    /// Package (directory) to unbox. Specify multiple directories to unbox multiple.
     #[arg(required = true, value_parser = cli_parse_pathbuf, value_hint = ValueHint::DirPath)]
     pub packages: Vec<PathBuf>,
 
@@ -78,25 +81,39 @@ pub struct BoxUnboxCli {
     #[arg(short = 'd', long)]
     pub dry_run: bool,
     /// Ignore file names with a regex. May be specified multiple times.
+    ///
+    /// Regex (regular expression) patterns are different from glob patterns. See `man 7 regex` for
+    /// an explanation of syntax and <https://regex101.com/> for testing regex patterns.
     #[arg(short, long = "ignore", value_name = "REGEX")]
     pub ignore_pats: Vec<Regex>,
     /// What to do if a file already exists in the target. This has no effect on symlinks that are
     /// created successfully.
     #[arg(short = 'e', long = "if_target_exists", default_value_t = ExistingFileStrategy::default(), value_name = "STRATEGY")]
     pub existing_file_strategy: ExistingFileStrategy,
-    /// Link the package directory itself, creating only one link.
+    /// Create only one link by linking the package directory itself directly to the target.
+    ///
+    /// For example, when this is `true`, `/path/to/target` would be a symlink pointing to
+    /// the `/path/to/package` directory.
     #[arg(short = 'r', long)]
     pub link_root: bool,
-    /// Type of symbolic (or hard) link to create.
+    /// Type of link to create.
     #[arg(short, long, value_name = "TYPE")]
     pub link_type: Option<LinkType>,
-    /// Save the current CLI parameters to the config file. WARNING: overwrites the existing file!
+    /// Save the current CLI parameters to a config file. WARNING: overwrites any existing file!
+    ///
+    /// When specified in conjunction with `--save-os-config`, both options are respected and two
+    /// configs are saved: a generic config AND an OS-specific config. The configs will be
+    /// identical.
     #[arg(short = 's', long)]
     pub save_config: bool,
-    /// Save an OS-specific config insetad of a generic one. Overwrites --save-config.
+    /// Save the CLI parameters to an OS-specific config insetad of a generic one.
+    ///
+    /// The OS marker is automatically at compile time. A list of all possible OS values is
+    /// available in the Rust docs: <https://doc.rust-lang.org/std/env/consts/constant.OS.html>
     #[arg(short = 'o', long)]
     pub save_os_config: bool,
-    /// Directory to unbox PACKAGE to. [default: ~]
+    /// Directory to unbox the package(s) to. If `--link-root` is enabled, this is where the
+    /// symlink will be created. [default: ~]
     #[arg(short, long, value_parser = cli_parse_pathbuf, value_hint = ValueHint::DirPath)]
     pub target: Option<PathBuf>,
 
