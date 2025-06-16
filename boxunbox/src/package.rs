@@ -61,10 +61,13 @@ fn __target_default() -> PathBuf {
 /// Describes what type of link to create.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, ValueEnum)]
 pub enum LinkType {
+    /// A soft link (symlink) pointing to an absolute path.
     #[value(name = "absolute")]
     SymlinkAbsolute,
+    /// A soft link (symlink) pointing to a relative path.
     #[value(name = "relative")]
     SymlinkRelative,
+    /// A hard link.
     #[value(name = "hard")]
     HardLink,
 }

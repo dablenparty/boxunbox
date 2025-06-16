@@ -47,13 +47,14 @@ pub enum ColorOverride {
 #[derive(Copy, Clone, Debug, ValueEnum)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum ExistingFileStrategy {
-    /// Overwrite the package with the target version. (destructive!)
+    /// "Adopt" the target file by overwriting the packages file with the target file and
+    /// placing a symlink in the target. (destructive!)
     Adopt,
     /// Ignore the link and continue.
     Ignore,
-    /// Move the target link to `<target>.bak`.
+    /// Move the target file to `<target>.bak` and create a symlink at the original target.
     Move,
-    /// Overwrite the target with the package version. (destructive!)
+    /// Overwrite the target file with the package file. (destructive!)
     Overwrite,
     /// Throw an error.
     #[value(name = "error")]
@@ -71,26 +72,24 @@ pub struct BoxUnboxCli {
     pub packages: Vec<PathBuf>,
 
     /// When to show color.
-    #[arg(long = "color", default_value_t = ColorOverride::default())]
+    #[arg(long = "color", default_value_t = ColorOverride::default(), value_name = "WHEN")]
     pub color_override: ColorOverride,
     /// Dry run; show the unboxing plan, but do not execute it.
     #[arg(short = 'd', long)]
     pub dry_run: bool,
-    /// Ignore file names via regex. May be specified multiple times.
-    #[arg(short, long = "ignore")]
+    /// Ignore file names with a regex. May be specified multiple times.
+    #[arg(short, long = "ignore", value_name = "REGEX")]
     pub ignore_pats: Vec<Regex>,
-    /// What to do if a target link already exists.
-    #[arg(short = 'e', long = "if_target_exists", default_value_t = ExistingFileStrategy::default())]
+    /// What to do if a file already exists in the target. This has no effect on symlinks that are
+    /// created successfully.
+    #[arg(short = 'e', long = "if_target_exists", default_value_t = ExistingFileStrategy::default(), value_name = "STRATEGY")]
     pub existing_file_strategy: ExistingFileStrategy,
-    /// Link the package directory itself.
+    /// Link the package directory itself, creating only one link.
     #[arg(short = 'r', long)]
     pub link_root: bool,
     /// Type of symbolic (or hard) link to create.
-    #[arg(short, long)]
+    #[arg(short, long, value_name = "TYPE")]
     pub link_type: Option<LinkType>,
-    /// Do not create directories at target locations.
-    #[arg(long)]
-    pub no_create_dirs: bool,
     /// Save the current CLI parameters to the config file. WARNING: overwrites the existing file!
     #[arg(short = 's', long)]
     pub save_config: bool,
@@ -100,6 +99,11 @@ pub struct BoxUnboxCli {
     /// Directory to unbox PACKAGE to. [default: ~]
     #[arg(short, long, value_parser = cli_parse_pathbuf, value_hint = ValueHint::DirPath)]
     pub target: Option<PathBuf>,
+
+    /// Do not create directories at target locations.
+    #[cfg(debug_assertions)]
+    #[arg(long)]
+    pub no_create_dirs: bool,
 }
 
 impl Default for ColorOverride {
