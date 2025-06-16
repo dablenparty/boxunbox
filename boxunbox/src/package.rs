@@ -6,6 +6,8 @@ use std::{
 };
 
 use clap::ValueEnum;
+#[cfg(not(debug_assertions))]
+use colored::Colorize;
 use const_format::formatc;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, de::Error};
@@ -178,7 +180,9 @@ impl TryFrom<PathBuf> for OldPackageConfig {
             default_rc_path
         } else {
             // no config found for this package
-            return Err(error::ConfigRead::FileNotFound(package));
+            return Err(error::ConfigRead::FileNotFound(
+                package.join(default_rc_path),
+            ));
         };
 
         #[cfg(debug_assertions)]
@@ -190,6 +194,14 @@ impl TryFrom<PathBuf> for OldPackageConfig {
         })?;
 
         let rc: OldPackageConfig = ron::from_str(&rc_str)?;
+
+        #[cfg(not(debug_assertions))]
+        if rc.no_create_dirs {
+            eprintln!(
+                "{}: found no_create_dirs=true in old config, this is now debug only and will be ignored!",
+                "warn".yellow()
+            );
+        }
 
         Ok(rc)
     }

@@ -155,10 +155,12 @@ impl BoxUnboxCli {
             ignore_pats: Vec::new(),
             link_root: false,
             link_type: None,
-            no_create_dirs: false,
             save_config: false,
             save_os_config: false,
             target: None,
+
+            #[cfg(debug_assertions)]
+            no_create_dirs: false,
         }
     }
 }

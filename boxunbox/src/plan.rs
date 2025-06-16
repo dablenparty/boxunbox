@@ -23,6 +23,8 @@ pub struct UnboxPlan {
     links: Vec<PlannedLink>,
     /// What to do if [`PlannedLink::dest`] exists
     efs: ExistingFileStrategy,
+
+    #[cfg(debug_assertions)]
     /// Whether to create missing dirs in `target` or not
     create_dirs: bool,
 }
@@ -66,6 +68,8 @@ impl<A: Into<PlannedLink>> FromIterator<A> for UnboxPlan {
         Self {
             links: iter.into_iter().map(Into::into).collect(),
             efs: ExistingFileStrategy::default(),
+
+            #[cfg(debug_assertions)]
             create_dirs: true,
         }
     }
@@ -146,6 +150,7 @@ impl UnboxPlan {
         let mut plan = Self {
             links: Vec::new(),
             efs: cli.existing_file_strategy,
+            #[cfg(debug_assertions)]
             create_dirs: !cli.no_create_dirs,
         };
 
@@ -304,7 +309,13 @@ impl UnboxPlan {
                 }
             }
 
-            pl.unbox(self.create_dirs).map_err(|err| UnboxError::Io {
+            #[cfg(debug_assertions)]
+            let create_dirs = self.create_dirs;
+
+            #[cfg(not(debug_assertions))]
+            let create_dirs = true;
+
+            pl.unbox(create_dirs).map_err(|err| UnboxError::Io {
                 pl: pl.clone(),
                 source: err,
             })?;
@@ -1071,10 +1082,12 @@ mod tests {
             .collect::<UnboxPlan>();
         let actual_plan = UnboxPlan::plan_unboxing(config, &cli)?;
 
+        #[cfg(debug_assertions)]
         assert_eq!(
             expected_plan.create_dirs, actual_plan.create_dirs,
             "unboxing plans disagree on create_dirs"
         );
+
         assert_eq!(
             expected_plan.efs, actual_plan.efs,
             "unboxing plan has unexpected file strategy"
@@ -1141,6 +1154,7 @@ mod tests {
             .collect::<UnboxPlan>();
         let actual_plan = UnboxPlan::plan_unboxing(config, &cli)?;
 
+        #[cfg(debug_assertions)]
         assert_eq!(
             expected_plan.create_dirs, actual_plan.create_dirs,
             "unboxing plans disagree on create_dirs"
@@ -1201,6 +1215,7 @@ mod tests {
             .collect::<UnboxPlan>();
         let actual_plan = UnboxPlan::plan_unboxing(config, &cli)?;
 
+        #[cfg(debug_assertions)]
         assert_eq!(
             expected_plan.create_dirs, actual_plan.create_dirs,
             "unboxing plans disagree on create_dirs"
@@ -1252,6 +1267,7 @@ mod tests {
         .collect::<UnboxPlan>();
         let actual_plan = UnboxPlan::plan_unboxing(config, &cli)?;
 
+        #[cfg(debug_assertions)]
         assert_eq!(
             expected_plan.create_dirs, actual_plan.create_dirs,
             "unboxing plans disagree on create_dirs"
