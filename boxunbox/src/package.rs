@@ -10,7 +10,11 @@ use const_format::formatc;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, de::Error};
 
-use crate::{cli::BoxUnboxCli, constants::BASE_DIRS, utils::expand_into_pathbuf};
+use crate::{
+    cli::BoxUnboxCli,
+    constants::BASE_DIRS,
+    utils::{expand_into_pathbuf, replace_home_with_tilde},
+};
 
 pub mod error;
 
@@ -516,11 +520,53 @@ mod tests {
     fn test_save_to_package() -> anyhow::Result<()> {
         let package = tempfile::tempdir().context("failed to make test package")?;
         let conf = PackageConfig::new(package.path());
+
+        let expected_conf = conf.clone();
+        let expected_conf_str =
+            toml::to_string_pretty(&expected_conf).context("failed to serialize test config")?;
+
         conf.save_to_package()
             .context("failed to save config to test package")?;
         let conf_path = package.path().join(PackageConfig::__serde_file_name());
+        let actual_conf_str =
+            std::fs::read_to_string(&conf_path).context("failed to read test config")?;
+
+        assert!(
+            conf_path
+                .try_exists()
+                .context("failed to verify existence of test config")?,
+            "test config file could not be found"
+        );
+        assert_eq!(
+            expected_conf_str, actual_conf_str,
+            "contents of test config file do not match serialized test config"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_save_to_package_with_home_target() -> anyhow::Result<()> {
+        let package = tempfile::tempdir().context("failed to make test package")?;
+        let conf = PackageConfig::new_with_target(
+            package.path(),
+            BASE_DIRS.home_dir().join(
+                TEST_TARGET
+                    .strip_prefix('/')
+                    .expect("TEST_TARGET should begin with a /"),
+            ),
+        );
+
+        let mut expected_conf = conf.clone();
+        expected_conf.package = replace_home_with_tilde(expected_conf.package).into();
+        expected_conf.target = replace_home_with_tilde(expected_conf.target).into();
+
         let expected_conf_str =
-            toml::to_string_pretty(&conf).context("failed to serialize test config")?;
+            toml::to_string_pretty(&expected_conf).context("failed to serialize test config")?;
+
+        conf.save_to_package()
+            .context("failed to save config to test package")?;
+        let conf_path = package.path().join(PackageConfig::__serde_file_name());
         let actual_conf_str =
             std::fs::read_to_string(&conf_path).context("failed to read test config")?;
 
