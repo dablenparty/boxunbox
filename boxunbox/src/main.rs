@@ -54,7 +54,9 @@ fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
     // OS config always takes precedence
     if cli.save_os_config {
         config.save_to_os_package()?;
-    } else if cli.save_config {
+    }
+
+    if cli.save_config {
         config.save_to_package()?;
     }
 
