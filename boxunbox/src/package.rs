@@ -332,6 +332,18 @@ impl PackageConfig {
         Self::try_from(toml_path)
     }
 
+    /// Initialize a new [`PackageConfig`] from a `package` and `cli` flags. The config file is
+    /// expected to exist.
+    ///
+    /// # Arguments
+    ///
+    /// - `package` - Package directory to read config file from.
+    /// - `cli` - CLI flags to merge the new config with.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if one occurs while parsing the package config file. For more
+    /// information, see [`Self::try_from_package`].
     pub fn init<P: Into<PathBuf>>(
         package: P,
         cli: &BoxUnboxCli,
@@ -343,6 +355,14 @@ impl PackageConfig {
         Ok(config)
     }
 
+    /// Merge fields from a given [`BoxUnboxCli`] with this [`PackageConfig`]. The CLI fields are
+    /// given precedence and will overwrite the config fields when prudent. [`Vec`] fields, such as
+    /// [`Self::ignore_pats`], are extended with the CLI values instead of being overwritten
+    /// completely.
+    ///
+    /// # Arguments
+    ///
+    /// - `cli` - CLI fields to merge with.
     pub fn merge_with_cli(&mut self, cli: &BoxUnboxCli) {
         self.ignore_pats.extend_from_slice(&cli.ignore_pats[..]);
         self.link_root |= cli.link_root;
@@ -354,6 +374,13 @@ impl PackageConfig {
         }
     }
 
+    /// Create a [`PackageConfig`] from an [`OldPackageConfig`]. This is kept for backwards
+    /// compatibility and will be removed in a future version.
+    ///
+    /// # Arguments
+    ///
+    /// - `package` - Package directory the config is for.
+    /// - `value` - The old config to build from.
     #[warn(deprecated_in_future)]
     pub fn from_old_package<P: Into<PathBuf>>(package: P, value: OldPackageConfig) -> Self {
         Self {
@@ -389,8 +416,15 @@ impl PackageConfig {
         config_path: P,
     ) -> Result<(), error::ConfigWrite> {
         let config_path = config_path.as_ref();
-        // TODO: replace $HOME in paths with ~
-        let config_str = toml::to_string_pretty(self)?;
+        let Self {
+            package, target, ..
+        } = self;
+
+        let mut conf_to_save = self.clone();
+        conf_to_save.package = replace_home_with_tilde(package).into();
+        conf_to_save.target = replace_home_with_tilde(target).into();
+
+        let config_str = toml::to_string_pretty(&conf_to_save)?;
         // WARN: this truncates the existing file. be careful!
         fs::write(config_path, config_str).map_err(|err| error::ConfigWrite::Io {
             source: err,
@@ -411,6 +445,11 @@ impl PackageConfig {
 
     /// Save this `PackageConfig` to a package as an OS-specific config. This uses
     /// [`std::env::consts::OS`] at runtime to determine which system the user is on.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if the config fails to serialize or the file cannot be
+    /// written to for some reason.
     pub fn save_to_os_package(&self) -> Result<(), error::ConfigWrite> {
         self.__inner_save_to_package(self.os_disk_path())
     }

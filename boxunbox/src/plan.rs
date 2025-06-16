@@ -91,6 +91,7 @@ impl PlannedLink {
         #[cfg(debug_assertions)]
         println!("diffing {} with {}", src.display(), dest_parent.display());
 
+        // TODO: make error for this
         diff_paths(src, dest_parent).expect("diff_paths should not return None")
     }
 
@@ -99,8 +100,9 @@ impl PlannedLink {
     ///
     /// # Errors
     ///
-    /// An error will be returned if the `dest` parent cannot be created, if [`os_symlink`] fails
-    /// to create a symbolic link, or if [`hard_link`] fails to create a hard link.
+    /// An error will be returned if the `dest` parent cannot be created, if [`Self::dest`] is not
+    /// absolute, if [`os_symlink`] fails to create a symbolic link, or if [`hard_link`] fails to
+    /// create a hard link.
     pub fn unbox(&self, create_dirs: bool) -> io::Result<()> {
         let Self { src, dest, ty } = self;
 
@@ -141,6 +143,13 @@ impl UnboxPlan {
     ///
     /// An error is returned if one occurs while parsing nested [`PackageConfig`]s, converting old RON
     /// configs to TOML, or walking the package tree.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic in the following cases:
+    /// - It cannot find the package from `root_config`
+    /// - It runs out of configs
+    /// - A file NOT from the package is encountered
     pub fn plan_unboxing(
         root_config: PackageConfig,
         cli: &BoxUnboxCli,
