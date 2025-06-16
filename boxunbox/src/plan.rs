@@ -105,9 +105,7 @@ impl PlannedLink {
         let Self { src, dest, ty } = self;
 
         if create_dirs {
-            let target_parent = dest
-                .parent()
-                .expect("dest should be an absolute path to a file");
+            let target_parent = dest.parent().ok_or(io::ErrorKind::InvalidFilename)?;
             fs::create_dir_all(target_parent)?;
         }
 
@@ -353,6 +351,75 @@ mod tests {
                 ty: LinkType::default(),
             })
             .collect::<UnboxPlan>();
+
+        assert_eq!(
+            expected_plan.efs,
+            ExistingFileStrategy::default(),
+            "unboxing plan has unexpected {}",
+            stringify!(ExistingFileStrategy)
+        );
+
+        expected_plan.unbox()?;
+
+        for link in expected_plan.links {
+            let PlannedLink { src, dest, .. } = link;
+
+            assert!(
+                dest.try_exists()
+                    .with_context(|| format!("failed to verify existence of {}", dest.display()))?,
+                "{} does not exist",
+                dest.display()
+            );
+            assert!(dest.is_symlink(), "expected symlink at {}", dest.display());
+            let actual_link_target = fs::read_link(&dest)
+                .with_context(|| format!("failed to read link info for {}", dest.display()))?;
+            assert_eq!(
+                src,
+                actual_link_target,
+                "{} does not point to {}",
+                actual_link_target.display(),
+                src.display()
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_unbox_package_symlink() -> anyhow::Result<()> {
+        let package = make_tmp_tree().context("failed to make test package")?;
+        let package_path = package.path();
+
+        let target = tempfile::tempdir().context("failed to create temp target")?;
+        let target_path = target.path();
+
+        let expected_target = PathBuf::from(target_path);
+        // only test with one file
+        let tail = TEST_PACKAGE_FILE_TAILS[0];
+        let expected_planned_link = PlannedLink {
+            src: package_path.join(tail),
+            dest: expected_target.join(tail),
+            ty: LinkType::default(),
+        };
+        let expected_plan = TEST_PACKAGE_FILE_TAILS
+            .iter()
+            .map(|tail| PlannedLink {
+                src: package_path.join(tail),
+                dest: expected_target.join(tail),
+                ty: LinkType::default(),
+            })
+            .collect::<UnboxPlan>();
+
+        let link_tail = TEST_PACKAGE_FILE_TAILS[1];
+        fs::remove_file(&expected_planned_link.src)?;
+        os_symlink(package_path.join(link_tail), &expected_planned_link.src)
+            .context("failed to create test symlink")?;
+
+        assert!(
+            expected_planned_link.src.is_symlink(),
+            "expected symlink at {}",
+            expected_planned_link.src.display()
+        );
 
         assert_eq!(
             expected_plan.efs,
