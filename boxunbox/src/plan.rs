@@ -78,6 +78,10 @@ impl<A: Into<PlannedLink>> FromIterator<A> for UnboxPlan {
 impl PlannedLink {
     /// Utility function that returns a modified [`PlannedLink::src`] that is relative to the
     /// parent of [`PlannedLink::dest`]. Both paths must be absolute before calling this function.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if either `src` or `dest` are not absolute.
     fn get_src_relative_to_dest(&self) -> PathBuf {
         let Self { src, dest, .. } = self;
 
@@ -86,12 +90,11 @@ impl PlannedLink {
 
         let dest_parent = dest
             .parent()
-            .expect("destination link should have a parent directory");
+            .expect("dest should be a file and have a parent");
 
         #[cfg(debug_assertions)]
         println!("diffing {} with {}", src.display(), dest_parent.display());
 
-        // TODO: make error for this
         diff_paths(src, dest_parent).expect("diff_paths should not return None")
     }
 
