@@ -104,8 +104,8 @@ impl PlannedLink {
     /// # Errors
     ///
     /// An error will be returned if the `dest` parent cannot be created, if [`Self::dest`] is not
-    /// absolute, if [`os_symlink`] fails to create a symbolic link, or if [`hard_link`] fails to
-    /// create a hard link.
+    /// absolute, if [`os_symlink`] fails to create a symbolic link, or if [`fs::hard_link`] fails
+    /// to create a hard link.
     pub fn unbox(&self, create_dirs: bool) -> io::Result<()> {
         let Self { src, dest, ty } = self;
 
@@ -244,6 +244,22 @@ impl UnboxPlan {
         Ok(plan)
     }
 
+    /// Unbox the package according to this [`UnboxPlan`], handling any existing target files along
+    /// the way.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if:
+    /// - When using [`ExistingFileStrategy::Adopt`], the target file is a symlink, or cannot be
+    ///   copied to the package, or cannot be removed after.
+    /// - When using [`ExistingFileStrategy::Move`], the target file cannot be moved.
+    /// - When using [`ExistingFileStrategy::Overwrite`], the target file cannot be removed.
+    /// - In any case, [`PlannedLink::unbox`] returns an error.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if a file name cannot be retrieved from a [`PlannedLink`]. Their
+    /// `src` and `dest` fields are expected to be absolute paths.
     #[allow(clippy::too_many_lines)]
     pub fn unbox(&self) -> Result<(), UnboxError> {
         for pl in &self.links {
