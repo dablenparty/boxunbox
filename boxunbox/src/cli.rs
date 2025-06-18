@@ -64,7 +64,6 @@ pub enum ExistingFileStrategy {
     ThrowError,
 }
 
-// FIXME: create man pages with clap_mangen
 /// boxunbox is a symlinker inspired by GNU stow.
 #[derive(Clone, Debug, Parser)]
 #[command(about, long_about = None, styles=__cli_styles(), version)]
