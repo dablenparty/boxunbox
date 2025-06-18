@@ -105,9 +105,9 @@ pub struct BoxUnboxCli {
     /// identical.
     #[arg(short = 's', long)]
     pub save_config: bool,
-    /// Save the CLI parameters to an OS-specific config insetad of a generic one.
+    /// Save the CLI parameters to an OS-specific config instead of a generic one.
     ///
-    /// The OS marker is automatically at compile time. A list of all possible OS values is
+    /// The OS marker is determined at compile time. A list of all possible OS values is
     /// available in the Rust docs: <https://doc.rust-lang.org/std/env/consts/constant.OS.html>
     #[arg(short = 'o', long)]
     pub save_os_config: bool,

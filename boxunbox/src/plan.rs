@@ -216,7 +216,7 @@ impl UnboxPlan {
                 continue;
             }
 
-            // ent is definitely a file at this point
+            // entry is definitely a file at this point
             // shadow current_config in case a new one was added
             let current_config = config_stack
                 .last()
