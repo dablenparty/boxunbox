@@ -260,7 +260,6 @@ impl UnboxPlan {
     ///
     /// This function will panic if a file name cannot be retrieved from a [`PlannedLink`]. Their
     /// `src` and `dest` fields are expected to be absolute paths.
-    #[allow(clippy::too_many_lines)]
     pub fn unbox(&self) -> Result<(), UnboxError> {
         for pl in &self.links {
             let PlannedLink { src, dest, .. } = &pl;
