@@ -82,7 +82,7 @@ pub struct BoxUnboxCli {
     pub dry_run: bool,
     /// Ignore file names with a regex. May be specified multiple times.
     ///
-    /// Regex (regular expression) patterns are different from glob patterns. See `man 7 regex` for
+    /// Regex (regular expression) patterns are different from glob patterns. See regex(7) for
     /// an explanation of syntax and <https://regex101.com/> for testing regex patterns.
     #[arg(short, long = "ignore", value_name = "REGEX")]
     pub ignore_pats: Vec<Regex>,
