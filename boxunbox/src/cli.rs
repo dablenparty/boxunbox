@@ -88,7 +88,7 @@ pub struct BoxUnboxCli {
     pub ignore_pats: Vec<Regex>,
     /// What to do if a file already exists in the target. This has no effect on symlinks that are
     /// created successfully.
-    #[arg(short = 'e', long = "if_target_exists", default_value_t = ExistingFileStrategy::default(), value_name = "STRATEGY")]
+    #[arg(short = 'e', long = "if-exists", default_value_t = ExistingFileStrategy::default(), value_name = "STRATEGY")]
     pub existing_file_strategy: ExistingFileStrategy,
     /// Create only one link by linking the package directory itself directly to the target.
     ///
