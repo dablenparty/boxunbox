@@ -10,6 +10,11 @@ use crate::{
     utils::{os_symlink, replace_home_with_tilde},
 };
 
+pub struct DisplayPlan<'a> {
+    plan: &'a UnboxPlan,
+    root_config: &'a PackageConfig,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PlannedLink {
     src: PathBuf,
@@ -29,51 +34,67 @@ pub struct UnboxPlan {
     create_dirs: bool,
 }
 
-impl Display for PlannedLink {
+impl Display for DisplayPlan<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { src, dest, ty } = self;
-        match ty {
-            LinkType::SymlinkAbsolute => {
-                write!(
-                    f,
-                    "{} -> {}",
-                    replace_home_with_tilde(dest).cyan(),
-                    replace_home_with_tilde(src).bright_green(),
-                )
-            }
-            LinkType::SymlinkRelative => {
-                let relative_src = self.get_src_relative_to_dest();
-                write!(
-                    f,
-                    "{} -> {}",
-                    replace_home_with_tilde(dest).bright_green(),
-                    relative_src.display().to_string().cyan(),
-                )
-            }
-            LinkType::HardLink => {
-                write!(
-                    f,
-                    "{} -> {} (hard link)",
-                    replace_home_with_tilde(dest).bright_red(),
-                    replace_home_with_tilde(src).bright_green(),
-                )
-            }
-        }
-    }
-}
+        let Self { plan, root_config } = self;
 
-impl Display for UnboxPlan {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
+        let UnboxPlan {
             links,
             efs,
             #[cfg(debug_assertions)]
             create_dirs,
-        } = self;
+        } = plan;
+
+        let PackageConfig {
+            package, target, ..
+        } = root_config;
 
         writeln!(f, "Here's the unboxing plan:")?;
+        writeln!(
+            f,
+            "Package: {}",
+            replace_home_with_tilde(package).bright_green()
+        )?;
+        writeln!(f, "Target: {}", replace_home_with_tilde(target).cyan())?;
+
         for pl in links {
-            writeln!(f, "{pl}")?;
+            let PlannedLink { src, dest, ty } = pl;
+            let formatted_dest = dest.strip_prefix(target).map_or_else(
+                |_| replace_home_with_tilde(dest),
+                |p| p.to_string_lossy().to_string(),
+            );
+            let formatted_src = src.strip_prefix(package).map_or_else(
+                |_| replace_home_with_tilde(src),
+                |p| p.to_string_lossy().to_string(),
+            );
+
+            match ty {
+                LinkType::SymlinkAbsolute => {
+                    writeln!(
+                        f,
+                        "{} -> {}",
+                        formatted_dest.cyan(),
+                        formatted_src.bright_green(),
+                    )?;
+                }
+                LinkType::SymlinkRelative => {
+                    let relative_src = pl.get_src_relative_to_dest();
+                    writeln!(
+                        f,
+                        "{} -> {}",
+                        formatted_dest.bright_green(),
+                        relative_src.display().to_string().cyan(),
+                    )?;
+                }
+                LinkType::HardLink => {
+                    writeln!(
+                        f,
+                        "{} -> {} (hard link)",
+                        formatted_dest.bright_red(),
+                        formatted_src.bright_green(),
+                    )?;
+                }
+            }
         }
 
         write!(f, "If a target file already exists, it will ")?;
@@ -169,13 +190,26 @@ impl PlannedLink {
             }
         }
 
-        println!("unboxed {self}");
-
         Ok(())
     }
 }
 
 impl UnboxPlan {
+    /// Returns an object implementing [`Display`] for printing this [`UnboxPlan`] with
+    /// supplemental information from a [`PackageConfig`]. This is modeled after
+    /// [`std::path::Path::display`].
+    ///
+    /// # Arguments
+    ///
+    /// - `root_config` - [`PackageConfig`] to borrow info from.
+    #[must_use]
+    pub fn display<'a>(&'a self, root_config: &'a PackageConfig) -> DisplayPlan<'a> {
+        DisplayPlan {
+            plan: self,
+            root_config,
+        }
+    }
+
     /// Plan an unboxing. This takes a [`PackageConfig`] and CLI and returns a list of
     /// [`PlannedLink`]s.
     ///

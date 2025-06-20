@@ -7,6 +7,7 @@ use boxunbox::cli::{BoxUnboxCli, ColorOverride};
 use boxunbox::error::UnboxError;
 use boxunbox::package::{self, OldPackageConfig, PackageConfig};
 use boxunbox::plan::UnboxPlan;
+use boxunbox::utils::replace_home_with_tilde;
 use clap::Parser;
 use colored::Colorize;
 
@@ -60,10 +61,10 @@ fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
         config.save_to_package()?;
     }
 
-    let unboxing_plan = UnboxPlan::plan_unboxing(config, cli)?;
+    let unboxing_plan = UnboxPlan::plan_unboxing(config.clone(), cli)?;
 
     // TODO: prettier output
-    println!("{unboxing_plan}");
+    println!("{}", unboxing_plan.display(&config));
 
     if cli.dry_run {
         return Err(UnboxError::DryRun);
@@ -94,8 +95,12 @@ fn main() -> anyhow::Result<()> {
 
     for package in packages {
         let canon_package = dunce::canonicalize(package)?;
-        unbox(&canon_package, &cli)
-            .with_context(|| format!("failed to unbox {}", canon_package.display()))?;
+        unbox(&canon_package, &cli).with_context(|| {
+            format!(
+                "failed to unbox {}",
+                replace_home_with_tilde(&canon_package)
+            )
+        })?;
     }
 
     Ok(())

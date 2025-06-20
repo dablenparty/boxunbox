@@ -18,7 +18,7 @@ pub enum PlanningError {
 
 #[derive(Debug, ThisError)]
 pub enum UnboxError {
-    #[error("cannot adopt symlink from {0}")]
+    #[error("cannot adopt symlink {0:?}")]
     AdoptSymlink(PlannedLink),
     #[error("failed to parse package config")]
     ConfigParse(#[from] ConfigRead),
@@ -34,6 +34,6 @@ pub enum UnboxError {
     },
     #[error("failed to plan unboxing")]
     Planning(#[from] PlanningError),
-    #[error("target already exists for {0}")]
+    #[error("target already exists for {0:?}")]
     TargetAlreadyExists(PlannedLink),
 }
