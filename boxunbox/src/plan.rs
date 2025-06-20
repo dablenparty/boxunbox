@@ -62,6 +62,48 @@ impl Display for PlannedLink {
     }
 }
 
+impl Display for UnboxPlan {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            links,
+            efs,
+            #[cfg(debug_assertions)]
+            create_dirs,
+        } = self;
+
+        writeln!(f, "Here's the unboxing plan:")?;
+        for pl in links {
+            writeln!(f, "{pl}")?;
+        }
+
+        write!(f, "If a target file already exists, it will ")?;
+
+        let efs_verb = match efs {
+            ExistingFileStrategy::Adopt => "be adopted".green(),
+            ExistingFileStrategy::Ignore => "be ignored".cyan(),
+            ExistingFileStrategy::Move => "be moved to <target_file>.bak".yellow(),
+            ExistingFileStrategy::Overwrite => "be overwritten".bright_red(),
+            ExistingFileStrategy::ThrowError => "throw an error".bright_red(),
+        };
+
+        writeln!(f, "{efs_verb}")?;
+
+        #[cfg(debug_assertions)]
+        {
+            write!(f, "{}: Target directories will ", "debug".cyan())?;
+            let create_dirs_verb = if *create_dirs {
+                "be created".cyan()
+            } else {
+                "not be created".bright_red()
+            };
+
+            writeln!(f, "{create_dirs_verb}")?;
+        }
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 impl<A: Into<PlannedLink>> FromIterator<A> for UnboxPlan {
     fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self {
