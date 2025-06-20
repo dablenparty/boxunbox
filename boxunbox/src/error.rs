@@ -7,12 +7,12 @@ use crate::{
 
 #[derive(Debug, ThisError)]
 pub enum PlanningError {
-    #[error("failed to parse package config: {0}")]
+    #[error("failed to parse package config")]
     ConfigParse(#[from] ConfigRead),
     #[warn(deprecated_in_future)]
-    #[error("failed to save TOML config: {0}")]
+    #[error("failed to save TOML config")]
     ConfigWrite(#[from] ConfigWrite),
-    #[error("failed to walk package tree: {0}")]
+    #[error("failed to walk package tree")]
     Walkdir(#[from] walkdir::Error),
 }
 
@@ -20,19 +20,19 @@ pub enum PlanningError {
 pub enum UnboxError {
     #[error("cannot adopt symlink from {0}")]
     AdoptSymlink(PlannedLink),
-    #[error("failed to parse package config: {0}")]
+    #[error("failed to parse package config")]
     ConfigParse(#[from] ConfigRead),
     #[warn(deprecated_in_future)]
-    #[error("failed to save TOML config: {0}")]
+    #[error("failed to save TOML config")]
     ConfigWrite(#[from] ConfigWrite),
     #[error("dry run, not executing")]
     DryRun,
-    #[error("failed to unbox {pl}: {source}")]
+    #[error("failed to unbox {pl:?}")]
     Io {
         pl: PlannedLink,
         source: std::io::Error,
     },
-    #[error("failed to plan unboxing: {0}")]
+    #[error("failed to plan unboxing")]
     Planning(#[from] PlanningError),
     #[error("target already exists for {0}")]
     TargetAlreadyExists(PlannedLink),
