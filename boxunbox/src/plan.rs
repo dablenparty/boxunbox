@@ -1,4 +1,8 @@
-use std::{fmt::Display, fs, io, path::PathBuf};
+use std::{
+    fmt::Display,
+    fs, io,
+    path::{Path, PathBuf},
+};
 
 use colored::Colorize;
 use pathdiff::diff_paths;
@@ -46,7 +50,10 @@ impl Display for DisplayPlan<'_> {
         } = plan;
 
         let PackageConfig {
-            package, target, ..
+            package,
+            target,
+            link_root,
+            ..
         } = root_config;
 
         writeln!(f, "Here's the unboxing plan:")?;
@@ -57,16 +64,24 @@ impl Display for DisplayPlan<'_> {
         )?;
         writeln!(f, "Target: {}", replace_home_with_tilde(target).cyan())?;
 
+        // `link_root` means the target is linked directly to the package. In that case, stripping
+        // the package/target prefix would return an empty string, so we don't strip if `link_root`
+        // is `true`.
+        let path_formatter = if *link_root {
+            |p: &Path, _: &Path| replace_home_with_tilde(p)
+        } else {
+            |p: &Path, prefix: &Path| {
+                p.strip_prefix(prefix).map_or_else(
+                    |_| replace_home_with_tilde(p),
+                    |stripped| stripped.to_string_lossy().to_string(),
+                )
+            }
+        };
+
         for pl in links {
             let PlannedLink { src, dest, ty } = pl;
-            let formatted_dest = dest.strip_prefix(target).map_or_else(
-                |_| replace_home_with_tilde(dest),
-                |p| p.to_string_lossy().to_string(),
-            );
-            let formatted_src = src.strip_prefix(package).map_or_else(
-                |_| replace_home_with_tilde(src),
-                |p| p.to_string_lossy().to_string(),
-            );
+            let formatted_dest = path_formatter(dest, target);
+            let formatted_src = path_formatter(src, package);
 
             match ty {
                 LinkType::SymlinkAbsolute => {
@@ -82,15 +97,16 @@ impl Display for DisplayPlan<'_> {
                     writeln!(
                         f,
                         "{} -> {}",
-                        formatted_dest.bright_green(),
-                        relative_src.display().to_string().cyan(),
+                        formatted_dest.cyan(),
+                        relative_src.display().to_string().bright_green(),
                     )?;
                 }
                 LinkType::HardLink => {
                     writeln!(
                         f,
-                        "{} -> {} (hard link)",
-                        formatted_dest.bright_red(),
+                        "{} ({}) -> {}",
+                        formatted_dest.cyan(),
+                        "hard link".bright_red(),
                         formatted_src.bright_green(),
                     )?;
                 }

@@ -63,7 +63,9 @@ fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
 
     let unboxing_plan = UnboxPlan::plan_unboxing(config.clone(), cli)?;
 
-    // TODO: prettier output
+    #[cfg(debug_assertions)]
+    println!("{unboxing_plan:#?}");
+
     println!("{}", unboxing_plan.display(&config));
 
     if cli.dry_run {
