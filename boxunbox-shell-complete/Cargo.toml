@@ -1,0 +1,14 @@
+[package]
+name = "boxunbox-shell-complete"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "shell-complete"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+boxunbox = { version = "*", path = "../boxunbox" }
+clap.workspace = true
+clap_complete = "4.5.54"

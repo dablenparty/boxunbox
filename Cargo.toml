@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["boxunbox", "boxunbox-mangen"]
+members = ["boxunbox", "boxunbox-mangen", "boxunbox-shell-complete"]
 exclude = ["aur/*", "demo/*", "*.sh"]
 
 [workspace.dependencies]

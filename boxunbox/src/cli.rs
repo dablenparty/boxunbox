@@ -66,7 +66,7 @@ pub enum ExistingFileStrategy {
 
 /// boxunbox is a symlinker inspired by GNU stow.
 #[derive(Clone, Debug, Parser)]
-#[command(about, long_about = None, styles=__cli_styles(), version)]
+#[command(name = "unbox", about, long_about = None, styles=__cli_styles(), version)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct BoxUnboxCli {
     /// Package (directory) to unbox. Specify multiple directories to unbox multiple.
