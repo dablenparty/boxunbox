@@ -68,12 +68,15 @@ fn __target_default() -> PathBuf {
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize, ValueEnum)]
 pub enum LinkType {
     /// A soft link (symlink) pointing to an absolute path.
+    #[serde(rename = "absolute")]
     #[value(name = "absolute")]
     SymlinkAbsolute,
     /// A soft link (symlink) pointing to a relative path.
+    #[serde(rename = "relative")]
     #[value(name = "relative")]
     SymlinkRelative,
     /// A hard link.
+    #[serde(rename = "hard")]
     #[value(name = "hard")]
     HardLink,
 }
