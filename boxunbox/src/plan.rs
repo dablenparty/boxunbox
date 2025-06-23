@@ -19,7 +19,7 @@ pub struct DisplayPlan<'a> {
     root_config: &'a PackageConfig,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PlannedLink {
     src: PathBuf,
     dest: PathBuf,
@@ -78,7 +78,10 @@ impl Display for DisplayPlan<'_> {
             }
         };
 
-        for pl in links {
+        let mut links = links.clone();
+        links.sort_by_key(|pl| pl.dest.clone());
+
+        for pl in &links {
             let PlannedLink { src, dest, ty } = pl;
             let formatted_dest = path_formatter(dest, target);
             let formatted_src = path_formatter(src, package);
