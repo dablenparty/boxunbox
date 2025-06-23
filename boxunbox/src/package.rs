@@ -437,7 +437,11 @@ impl PackageConfig {
         Self {
             package: package.into(),
             target: value.target,
-            exclude_pats: value.ignore_pats,
+            exclude_pats: value
+                .ignore_pats
+                .into_iter()
+                .chain(__exclude_pats_default())
+                .collect(),
             include_pats: Vec::default(),
             link_root: value.link_root,
             link_type: match (value.use_relative_links, value.use_hard_links) {
