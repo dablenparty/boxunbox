@@ -79,7 +79,10 @@ pub struct BoxUnboxCli {
     /// Dry run; show the unboxing plan, but do not execute it.
     #[arg(short = 'd', long)]
     pub dry_run: bool,
-    /// Ignore file names with a regex. May be specified multiple times.
+    /// Exclude file names with a regex. May be specified multiple times, overrides --include.
+    ///
+    /// When an exclude pattern is specified, all files are included by default unless they match
+    /// the pattern.
     ///
     /// Regex (regular expression) patterns are different from glob patterns. See regex(7) for
     /// an explanation of syntax and <https://regex101.com/> for testing regex patterns.
@@ -89,6 +92,14 @@ pub struct BoxUnboxCli {
     /// created successfully.
     #[arg(short = 'e', long = "if-exists", default_value_t = ExistingFileStrategy::default(), value_name = "STRATEGY")]
     pub existing_file_strategy: ExistingFileStrategy,
+    /// Include file names with a regex. May be specified multiple times.
+    ///
+    /// This is the opposite of --exclude. When an include pattern is specified, all files are
+    /// EXCLUDED by default unless they match the pattern.
+    ///
+    /// If both include AND exclude patterns exist, the include patterns are checked first and the
+    /// exclude patterns apply only to the included files. Therefore, if a file matches both an
+    /// include AND exclude pattern, it will ultimately be excluded.
     #[arg(short, long = "include", value_name = "REGEX")]
     pub include_pats: Vec<Regex>,
     /// Create only one link by linking the package directory itself directly to the target.
