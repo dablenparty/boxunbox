@@ -112,10 +112,14 @@ pub struct PackageConfig {
     #[serde(default = "__target_default", deserialize_with = "__de_pathbuf")]
     pub target: PathBuf,
     /// [`Regex`]'s that determine which file names to exclude.
-    #[serde(default = "__exclude_pats_default", with = "serde_regex")]
+    #[serde(
+        default = "__exclude_pats_default",
+        rename = "exclude",
+        with = "serde_regex"
+    )]
     pub exclude_pats: Vec<Regex>,
     /// [`Regex`]'s that determine which file names to include.
-    #[serde(default = "Vec::default", with = "serde_regex")]
+    #[serde(default = "Vec::default", rename = "include", with = "serde_regex")]
     pub include_pats: Vec<Regex>,
     /// Only link the root package folder, creating one link.
     #[serde(default = "bool::default")]
