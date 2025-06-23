@@ -1,11 +1,57 @@
 use std::{
+    ffi::OsString,
     io,
     path::{Path, PathBuf},
+    process,
 };
 
 use anyhow::Context;
 
 use crate::constants::BASE_DIRS;
+
+/// Returns the cargo `target` directory as a [`PathBuf`] for the current profile (`debug` or
+/// `release`). This works by calling `cargo locate-project` to get the workspace root.
+///
+/// # Errors
+///
+/// An error is returned if `cargo locate-project` retruns a non-zero exit code.
+///
+/// # Panics
+///
+/// This function will panic if the directory returned by `cargo locate-project` is not an absolute
+/// path to a directory.
+pub fn get_cargo_target() -> anyhow::Result<PathBuf> {
+    #[cfg(debug_assertions)]
+    const CARGO_PROFILE: &str = "debug";
+
+    #[cfg(not(debug_assertions))]
+    const CARGO_PROFILE: &str = "release";
+
+    let cargo_output = process::Command::new(env!("CARGO"))
+        .args(["locate-project", "--workspace", "--message-format=plain"])
+        .output()?;
+
+    if !cargo_output.status.success() {
+        if let Some(code) = cargo_output.status.code() {
+            anyhow::bail!("cargo locate-project exited with code {code:?}");
+        }
+        anyhow::bail!("cargo locate-project exited by signal");
+    }
+
+    #[cfg(unix)]
+    let workspace_manifest_path = <OsString as std::os::unix::ffi::OsStringExt>::from_vec(
+        cargo_output.stdout.trim_ascii_end().to_vec(),
+    );
+
+    #[cfg(windows)]
+    let workspace_manifest_path = todo!("create OsString from locate-project output on Windows");
+
+    Ok(Path::new(&workspace_manifest_path)
+        .parent()
+        .expect("cargo locate-project output should be a file path")
+        .join("target")
+        .join(CARGO_PROFILE))
+}
 
 /// If the [`Path`] reference begins with the users home directory, it is replaced with a `~`. This
 /// is kinda the opposite of [`expand_into_pathbuf`] and meant for printing.
