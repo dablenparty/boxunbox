@@ -374,8 +374,8 @@ impl PackageConfig {
     ///
     /// - `cli` - CLI fields to merge with.
     pub fn merge_with_cli(&mut self, cli: &BoxUnboxCli) {
-        self.exclude_pats.extend_from_slice(&cli.exclude_pats[..]);
-        self.include_pats.extend_from_slice(&cli.include_pats[..]);
+        self.exclude_pats.extend_from_slice(&cli.exclude_pats);
+        self.include_pats.extend_from_slice(&cli.include_pats);
         self.link_root |= cli.link_root;
         if let Some(link_type) = cli.link_type {
             self.link_type = link_type;
