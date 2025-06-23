@@ -12,6 +12,8 @@ pub enum PlanningError {
     #[warn(deprecated_in_future)]
     #[error("failed to save TOML config")]
     ConfigWrite(#[from] ConfigWrite),
+    #[error("nothing to unbox")]
+    EmptyPlan,
     #[error("failed to walk package tree")]
     Walkdir(#[from] walkdir::Error),
 }

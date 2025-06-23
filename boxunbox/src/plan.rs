@@ -356,7 +356,11 @@ impl UnboxPlan {
             });
         }
 
-        Ok(plan)
+        if plan.links.is_empty() {
+            Err(PlanningError::EmptyPlan)
+        } else {
+            Ok(plan)
+        }
     }
 
     /// Unbox the package according to this [`UnboxPlan`], handling any existing target files along
