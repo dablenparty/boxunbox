@@ -131,3 +131,28 @@ where
         unimplemented!()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_cargo_target() -> anyhow::Result<()> {
+        let cargo_profile = if cfg!(debug_assertions) {
+            "debug"
+        } else {
+            "release"
+        };
+        // this is a subcrate, so the target should be in the parent
+        let expected_target = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("target")
+            .join(cargo_profile);
+        let expected_target = dunce::canonicalize(expected_target)
+            .context("failed to canonicalize expected target")?;
+        let actual_target = get_cargo_target()?;
+        assert_eq!(expected_target, actual_target);
+
+        Ok(())
+    }
+}
