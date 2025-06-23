@@ -276,12 +276,12 @@ impl UnboxPlan {
             let entry = res?;
             let file_name = entry.file_name().to_string_lossy();
             let file_type = entry.file_type();
-            let should_be_ignored = config_stack
+            let should_be_excluded = config_stack
                 .iter()
                 .flat_map(|conf| conf.exclude_pats.clone())
                 .any(|re| re.is_match(&file_name));
 
-            if should_be_ignored {
+            if should_be_excluded {
                 if file_type.is_dir() {
                     walker.skip_current_dir();
                 }

@@ -89,6 +89,8 @@ pub struct BoxUnboxCli {
     /// created successfully.
     #[arg(short = 'e', long = "if-exists", default_value_t = ExistingFileStrategy::default(), value_name = "STRATEGY")]
     pub existing_file_strategy: ExistingFileStrategy,
+    #[arg(short, long = "include", value_name = "REGEX")]
+    pub include_pats: Vec<Regex>,
     /// Create only one link by linking the package directory itself directly to the target.
     ///
     /// For example, when this is `true`, `/path/to/target` would be a symlink pointing to
@@ -168,7 +170,8 @@ impl BoxUnboxCli {
             color_override: ColorOverride::default(),
             dry_run: false,
             existing_file_strategy: ExistingFileStrategy::default(),
-            exclude_pats: Vec::new(),
+            exclude_pats: Vec::default(),
+            include_pats: Vec::default(),
             link_root: false,
             link_type: None,
             save_config: false,

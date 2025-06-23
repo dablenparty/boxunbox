@@ -111,6 +111,8 @@ pub struct PackageConfig {
     /// [`Regex`]'s that determine which file names to ignore.
     #[serde(default = "__exclude_pats_default", with = "serde_regex")]
     pub exclude_pats: Vec<Regex>,
+    #[serde(default = "Vec::default", with = "serde_regex")]
+    pub include_pats: Vec<Regex>,
     /// Only link the root package folder, creating one link.
     #[serde(default = "bool::default")]
     pub link_root: bool,
@@ -161,6 +163,12 @@ impl PartialEq for PackageConfig {
                 .exclude_pats
                 .iter()
                 .zip(&other.exclude_pats)
+                .all(|(l, r)| l.as_str() == r.as_str())
+            && self.include_pats.len() == other.include_pats.len()
+            && self
+                .include_pats
+                .iter()
+                .zip(&other.include_pats)
                 .all(|(l, r)| l.as_str() == r.as_str())
             && self.link_root == other.link_root
             && self.link_type == other.link_type
@@ -284,6 +292,7 @@ impl PackageConfig {
             package: package.into(),
             target: __target_default(),
             exclude_pats: __exclude_pats_default(),
+            include_pats: Vec::default(),
             link_root: bool::default(),
             link_type: LinkType::default(),
         }
@@ -302,6 +311,7 @@ impl PackageConfig {
             package: package.into(),
             target: target.into(),
             exclude_pats: __exclude_pats_default(),
+            include_pats: Vec::default(),
             link_root: bool::default(),
             link_type: LinkType::default(),
         }
@@ -365,6 +375,7 @@ impl PackageConfig {
     /// - `cli` - CLI fields to merge with.
     pub fn merge_with_cli(&mut self, cli: &BoxUnboxCli) {
         self.exclude_pats.extend_from_slice(&cli.exclude_pats[..]);
+        self.include_pats.extend_from_slice(&cli.include_pats[..]);
         self.link_root |= cli.link_root;
         if let Some(link_type) = cli.link_type {
             self.link_type = link_type;
@@ -387,6 +398,7 @@ impl PackageConfig {
             package: package.into(),
             target: value.target,
             exclude_pats: value.ignore_pats,
+            include_pats: Vec::default(),
             link_root: value.link_root,
             link_type: match (value.use_relative_links, value.use_hard_links) {
                 (_, true) => LinkType::HardLink,
@@ -525,6 +537,7 @@ mod tests {
                     .zip(expected_exclude_pats)
                     .all(|(a, b)| a.as_str() == b.as_str())
         );
+        assert!(conf.include_pats.is_empty());
         assert!(!conf.link_root);
         assert_eq!(conf.link_type, LinkType::SymlinkAbsolute);
 
@@ -539,8 +552,12 @@ mod tests {
         // change EVERY value from the default for a comprehensive test
         cli.link_root = true;
         cli.link_type = Some(LinkType::HardLink);
-        let test_regex = Regex::new("^test$").context("failed to compile test Regex")?;
-        cli.exclude_pats = vec![test_regex];
+        let test_exclude_regex =
+            Regex::new("^test$").context("failed to compile test exclude regex")?;
+        let test_include_regex =
+            Regex::new("^nested").context("failed to compile test include regex")?;
+        cli.exclude_pats = vec![test_exclude_regex];
+        cli.include_pats = vec![test_include_regex.clone()];
         let expected_target = PathBuf::from("/path/to/test/target");
         cli.target = Some(expected_target.clone());
 
@@ -553,12 +570,21 @@ mod tests {
             .into_iter()
             .chain(cli.exclude_pats.clone())
             .collect::<Vec<Regex>>();
+        let expected_include_pats = vec![test_include_regex];
         assert!(
             conf.exclude_pats.len() == expected_exclude_pats.len()
                 && conf
                     .exclude_pats
                     .iter()
                     .zip(expected_exclude_pats)
+                    .all(|(a, b)| a.as_str() == b.as_str())
+        );
+        assert!(
+            conf.include_pats.len() == expected_include_pats.len()
+                && conf
+                    .include_pats
+                    .iter()
+                    .zip(expected_include_pats)
                     .all(|(a, b)| a.as_str() == b.as_str())
         );
         assert!(conf.link_root);
