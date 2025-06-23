@@ -6,6 +6,7 @@ use std::{
 };
 
 use clap::ValueEnum;
+use colored::Colorize;
 #[cfg(not(debug_assertions))]
 use colored::Colorize;
 use const_format::formatc;
@@ -360,7 +361,37 @@ impl PackageConfig {
         cli: &BoxUnboxCli,
     ) -> Result<Self, error::ConfigRead> {
         let package = package.into();
-        let mut config = Self::try_from_package(package)?;
+        let mut config = match Self::try_from_package(&package) {
+            Ok(config) => config,
+            Err(error::ConfigRead::FileNotFound(path_buf)) => {
+                // TODO: Remove this conversion eventually
+                eprintln!(
+                    "{}: {} not found, checking for old config...",
+                    "warn".yellow(),
+                    path_buf.display()
+                );
+                let mut converted_conf = match OldPackageConfig::try_from(package.clone()) {
+                    Ok(old_config) => {
+                        let save_note = if cli.save_config || cli.save_os_config {
+                            "A converted config will be saved."
+                        } else {
+                            "Please use --save-config to save the converted config."
+                        };
+                        eprintln!("{}: parsed old config! {save_note}", "warn".yellow());
+
+                        PackageConfig::from_old_package(package, old_config)
+                    }
+                    Err(err) => {
+                        eprintln!("{}: error reading old config: {err}", "warn".yellow());
+                        return Err(error::ConfigRead::FileNotFound(path_buf));
+                    }
+                };
+                // converted/default configs need to be merged with the CLI opts
+                converted_conf.merge_with_cli(cli);
+                converted_conf
+            }
+            Err(err) => return Err(err),
+        };
         config.merge_with_cli(cli);
 
         Ok(config)

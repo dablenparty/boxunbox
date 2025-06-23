@@ -5,11 +5,10 @@ use std::path::Path;
 use anyhow::Context;
 use boxunbox::cli::{BoxUnboxCli, ColorOverride};
 use boxunbox::error::UnboxError;
-use boxunbox::package::{self, OldPackageConfig, PackageConfig};
+use boxunbox::package::PackageConfig;
 use boxunbox::plan::UnboxPlan;
 use boxunbox::utils::replace_home_with_tilde;
 use clap::Parser;
-use colored::Colorize;
 
 /// Unbox the package.
 ///
@@ -17,37 +16,7 @@ use colored::Colorize;
 ///
 /// - `package` - Package directory to unbox.
 fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
-    let config = match PackageConfig::init(package, cli) {
-        Ok(config) => config,
-        Err(package::error::ConfigRead::FileNotFound(path_buf)) => {
-            // TODO: Remove this conversion eventually
-            eprintln!(
-                "{}: {} not found, checking for old config...",
-                "warn".yellow(),
-                path_buf.display()
-            );
-            let mut converted_conf = match OldPackageConfig::try_from(package.to_path_buf()) {
-                Ok(old_config) => {
-                    let save_note = if cli.save_config || cli.save_os_config {
-                        "A converted config will be saved."
-                    } else {
-                        "Please use --save-config to save the converted config."
-                    };
-                    eprintln!("{}: parsed old config! {save_note}", "warn".yellow());
-
-                    PackageConfig::from_old_package(package, old_config)
-                }
-                Err(err) => {
-                    eprintln!("{}: error reading old config: {err}", "warn".yellow());
-                    PackageConfig::new(package)
-                }
-            };
-            // converted/default configs need to be merged with the CLI opts
-            converted_conf.merge_with_cli(cli);
-            converted_conf
-        }
-        Err(err) => return Err(err.into()),
-    };
+    let config = PackageConfig::init(package, cli)?;
 
     #[cfg(debug_assertions)]
     println!("{config:#?}");
