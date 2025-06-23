@@ -279,13 +279,33 @@ impl UnboxPlan {
             let entry = res?;
             let file_name = entry.file_name().to_string_lossy();
             let file_type = entry.file_type();
+            // Components ARE NOT needed for excluding because `walkdir` provides the handy dandy
+            // `skip_current_dir` function (see below).
+            let should_be_excluded = config_stack
+                .iter()
+                .flat_map(|conf| &conf.exclude_pats)
+                .any(|re| re.is_match(&file_name));
+
+            if should_be_excluded {
+                // skips the current dir by removing it and all children from the iterator
+                if file_type.is_dir() {
+                    walker.skip_current_dir();
+                }
+                continue;
+            }
+
+            // NOTE: `include_pats` must be checked after `exclude_pats`.
+            // If a directory is not explicitly included or excluded, it should be considered
+            // included because it might have nested dirs or files that WILL match a pattern.
+            // Therefore, the dir is skipped, but not removed from the iterator like above.
             let should_be_included = {
                 let pats = config_stack
                     .iter()
                     .flat_map(|conf| &conf.include_pats)
                     .collect::<Vec<_>>();
                 // Components ARE needed for including or else nothing will be included. For
-                // example, a file may not match the include pattern, but it's parent folder does.
+                // example, a file may not match the include pattern but it's parent folder does,
+                // or vice versa.
                 let entry_components = entry
                     .path()
                     .components()
@@ -297,18 +317,7 @@ impl UnboxPlan {
                         .any(|re| entry_components.iter().any(|c| re.is_match(c)))
             };
 
-            // Components ARE NOT needed for excluding because `walkdir` provides the handy dandy
-            // `skip_current_dir` function (see below).
-            let should_be_excluded = config_stack
-                .iter()
-                .flat_map(|conf| &conf.exclude_pats)
-                .any(|re| re.is_match(&file_name));
-
-            if !should_be_included || should_be_excluded {
-                // skips the current dir by removing it and all children from the iterator
-                if file_type.is_dir() {
-                    walker.skip_current_dir();
-                }
+            if !should_be_included {
                 continue;
             }
 
