@@ -5,7 +5,7 @@ use std::path::Path;
 use anyhow::Context;
 use boxunbox::cli::{BoxUnboxCli, ColorOverride};
 use boxunbox::error::UnboxError;
-use boxunbox::package::PackageConfig;
+use boxunbox::package::{self, PackageConfig};
 use boxunbox::plan::UnboxPlan;
 use boxunbox::utils::replace_home_with_tilde;
 use clap::Parser;
@@ -16,7 +16,15 @@ use clap::Parser;
 ///
 /// - `package` - Package directory to unbox.
 fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
-    let config = PackageConfig::init(package, cli)?;
+    let config = match PackageConfig::init(package, cli) {
+        Ok(config) => config,
+        Err(package::error::ConfigRead::FileNotFound(_)) => {
+            let mut conf = PackageConfig::new(package);
+            conf.merge_with_cli(cli);
+            conf
+        }
+        Err(err) => return Err(err.into()),
+    };
 
     #[cfg(debug_assertions)]
     println!("{config:#?}");
