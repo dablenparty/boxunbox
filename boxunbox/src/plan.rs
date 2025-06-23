@@ -1318,7 +1318,7 @@ mod tests {
 
     #[test]
     fn test_plan_unboxing_nested_config() -> anyhow::Result<()> {
-        const TEST_NESTED_PACKAGE: &str = "folder1";
+        const TEST_NESTED_PACKAGE: &str = "folder1/";
 
         let package = make_tmp_tree().context("failed to make test package")?;
         let package_path = package.path();
@@ -1346,8 +1346,8 @@ mod tests {
             .into_iter()
             .filter(|tail| !tail.ends_with("test_ignore2.txt"))
             .map(|tail| {
-                let dest = if tail.starts_with(TEST_NESTED_PACKAGE) {
-                    expected_nested_target.join(tail)
+                let dest = if let Some(file_tail) = tail.strip_prefix(TEST_NESTED_PACKAGE) {
+                    expected_nested_target.join(file_tail)
                 } else {
                     expected_target.join(tail)
                 };
