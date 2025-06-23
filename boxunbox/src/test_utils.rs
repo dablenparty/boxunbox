@@ -18,6 +18,24 @@ pub const TEST_PACKAGE_FILE_TAILS: [&str; 6] = [
 
 pub const TEST_TARGET: &str = "/path/to/test/target";
 
+/// Compare two [`Vec`]s by converting their values to [`String`]s and comparing those. Returns
+/// `true` if `left` and `right` are the same length, same order, and all elements are equal. This
+/// is most useful for comparing [`Vec`]s of types that do not implement [`PartialEq`], but _do_
+/// implement [`ToString`], such as [`regex::Regex`].
+///
+/// # Arguments
+///
+/// - `left` - Left [`Vec`]
+/// - `right` - Right [`Vec`]
+pub fn vec_string_compare<S: ToString>(left: &[S], right: &[S]) -> bool {
+    left.len() == right.len()
+        && left
+            .iter()
+            .map(ToString::to_string)
+            .zip(right.iter().map(ToString::to_string))
+            .all(|(l, r)| l == r)
+}
+
 /// Creates a new temporary file tree for use in integration tests. Each call to this function will
 /// create a _new_ temporary directory; however, every directory will have the same structure:
 ///

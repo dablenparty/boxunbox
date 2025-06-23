@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fmt::Display,
     fs,
     path::{Path, PathBuf},
@@ -152,24 +153,36 @@ impl Display for LinkType {
     }
 }
 
-impl Eq for PackageConfig {}
-
+#[cfg(test)]
 impl PartialEq for PackageConfig {
     fn eq(&self, other: &Self) -> bool {
+        // WARN: don't use a HashSet to compare these; order doesn't matter but duplicates do.
+        // That restriction makes this function O(n^2), but it's for testing, so who cares?
+        let other_exclude_pats = other
+            .exclude_pats
+            .iter()
+            .map(Regex::as_str)
+            .collect::<Vec<_>>();
+        let other_include_pats = other
+            .include_pats
+            .iter()
+            .map(Regex::as_str)
+            .collect::<Vec<_>>();
+
         self.package == other.package
             && self.target == other.target
             && self.exclude_pats.len() == other.exclude_pats.len()
             && self
                 .exclude_pats
                 .iter()
-                .zip(&other.exclude_pats)
-                .all(|(l, r)| l.as_str() == r.as_str())
+                .map(Regex::as_str)
+                .all(|s| other_exclude_pats.contains(&s))
             && self.include_pats.len() == other.include_pats.len()
             && self
                 .include_pats
                 .iter()
-                .zip(&other.include_pats)
-                .all(|(l, r)| l.as_str() == r.as_str())
+                .map(Regex::as_str)
+                .all(|s| other_include_pats.contains(&s))
             && self.link_root == other.link_root
             && self.link_type == other.link_type
     }
@@ -432,15 +445,25 @@ impl PackageConfig {
     ///
     /// - `package` - Package directory the config is for.
     /// - `value` - The old config to build from.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if it fails to decompile and recompile any [`Regex`] patterns.
+    /// This is done to eliminate duplicates from the pattern list.
     #[warn(deprecated_in_future)]
     pub fn from_old_package<P: Into<PathBuf>>(package: P, value: OldPackageConfig) -> Self {
         Self {
             package: package.into(),
             target: value.target,
+            // collect into a HashSet to eliminate dupes, then put back into a Vec
             exclude_pats: value
                 .ignore_pats
                 .into_iter()
                 .chain(__exclude_pats_default())
+                .map(|re| re.to_string())
+                .collect::<HashSet<_>>()
+                .into_iter()
+                .map(|s| Regex::new(&s).expect("decompiled regex should recompile"))
                 .collect(),
             include_pats: Vec::default(),
             link_root: value.link_root,
@@ -522,7 +545,7 @@ impl PackageConfig {
 mod tests {
     use anyhow::Context;
 
-    use crate::test_utils::{TEST_TARGET, make_tmp_tree};
+    use crate::test_utils::{TEST_TARGET, make_tmp_tree, vec_string_compare};
 
     use super::*;
 
@@ -536,14 +559,10 @@ mod tests {
         assert_eq!(conf.package, package_path);
         assert_eq!(conf.target, PathBuf::from(TEST_TARGET));
         let expected_exclude_pats = __exclude_pats_default();
-        assert!(
-            conf.exclude_pats.len() == expected_exclude_pats.len()
-                && conf
-                    .exclude_pats
-                    .iter()
-                    .zip(expected_exclude_pats)
-                    .all(|(a, b)| a.as_str() == b.as_str())
-        );
+        assert!(vec_string_compare(
+            &conf.exclude_pats,
+            &expected_exclude_pats
+        ));
         assert!(!conf.link_root);
         assert_eq!(conf.link_type, LinkType::SymlinkAbsolute);
 
@@ -580,14 +599,10 @@ mod tests {
         assert_eq!(conf.package, package_path);
         assert_eq!(conf.target, PathBuf::from(TEST_TARGET));
         let expected_exclude_pats = __exclude_pats_default();
-        assert!(
-            conf.exclude_pats.len() == expected_exclude_pats.len()
-                && conf
-                    .exclude_pats
-                    .iter()
-                    .zip(expected_exclude_pats)
-                    .all(|(a, b)| a.as_str() == b.as_str())
-        );
+        assert!(vec_string_compare(
+            &conf.exclude_pats,
+            &expected_exclude_pats
+        ));
         assert!(conf.include_pats.is_empty());
         assert!(!conf.link_root);
         assert_eq!(conf.link_type, LinkType::SymlinkAbsolute);
@@ -622,22 +637,14 @@ mod tests {
             .chain(cli.exclude_pats.clone())
             .collect::<Vec<Regex>>();
         let expected_include_pats = vec![test_include_regex];
-        assert!(
-            conf.exclude_pats.len() == expected_exclude_pats.len()
-                && conf
-                    .exclude_pats
-                    .iter()
-                    .zip(expected_exclude_pats)
-                    .all(|(a, b)| a.as_str() == b.as_str())
-        );
-        assert!(
-            conf.include_pats.len() == expected_include_pats.len()
-                && conf
-                    .include_pats
-                    .iter()
-                    .zip(expected_include_pats)
-                    .all(|(a, b)| a.as_str() == b.as_str())
-        );
+        assert!(vec_string_compare(
+            &conf.exclude_pats,
+            &expected_exclude_pats
+        ));
+        assert!(vec_string_compare(
+            &conf.include_pats,
+            &expected_include_pats
+        ));
         assert!(conf.link_root);
         assert_eq!(conf.link_type, LinkType::HardLink);
 
