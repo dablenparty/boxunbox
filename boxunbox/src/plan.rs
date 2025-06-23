@@ -1286,6 +1286,28 @@ mod tests {
     }
 
     #[test]
+    fn test_plan_empty_unboxing() -> anyhow::Result<()> {
+        let package = tempfile::tempdir().context("failed to make test package")?;
+        let package_path = package.path();
+        let cli = BoxUnboxCli::new(package_path);
+        let config = PackageConfig::new(package_path);
+
+        let actual_result = UnboxPlan::plan_unboxing(config, &cli);
+
+        assert!(
+            actual_result.is_err(),
+            "unexpectedly planned unboxing succesfully"
+        );
+
+        match actual_result.unwrap_err() {
+            PlanningError::EmptyPlan => {}
+            err => panic!("unboxing plan failed with unexpected error {err:?}"),
+        }
+
+        Ok(())
+    }
+
+    #[test]
     fn test_plan_unboxing() -> anyhow::Result<()> {
         let package = make_tmp_tree().context("failed to make test package")?;
         let package_path = package.path();
