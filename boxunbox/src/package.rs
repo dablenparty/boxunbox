@@ -7,8 +7,6 @@ use std::{
 
 use clap::ValueEnum;
 use colored::Colorize;
-#[cfg(not(debug_assertions))]
-use colored::Colorize;
 use const_format::formatc;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, de::Error};
