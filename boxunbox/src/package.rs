@@ -194,7 +194,7 @@ impl TryFrom<PathBuf> for OldPackageConfig {
         };
 
         #[cfg(debug_assertions)]
-        println!("reading config: {}", rc_file.display());
+        println!("{}: reading config: {}", "debug".cyan(), rc_file.display());
 
         let rc_str = fs::read_to_string(&rc_file).map_err(|err| error::ConfigRead::Io {
             source: err,
@@ -230,6 +230,13 @@ impl TryFrom<PathBuf> for PackageConfig {
         {
             return Err(error::ConfigRead::FileNotFound(config_path));
         }
+
+        #[cfg(debug_assertions)]
+        println!(
+            "{}: reading config: {}",
+            "debug".cyan(),
+            config_path.display()
+        );
 
         let config_str =
             &fs::read_to_string(&config_path).map_err(|err| error::ConfigRead::Io {
@@ -363,24 +370,27 @@ impl PackageConfig {
             Ok(config) => config,
             Err(error::ConfigRead::FileNotFound(path_buf)) => {
                 // TODO: Remove this conversion eventually
-                eprintln!(
+                #[cfg(debug_assertions)]
+                println!(
                     "{}: {} not found, checking for old config...",
-                    "warn".yellow(),
+                    "debug".cyan(),
                     path_buf.display()
                 );
                 let mut converted_conf = match OldPackageConfig::try_from(package.clone()) {
                     Ok(old_config) => {
                         let save_note = if cli.save_config || cli.save_os_config {
-                            "A converted config will be saved."
+                            "A converted TOML config will be saved."
                         } else {
-                            "Please use --save-config to save the converted config."
+                            "Please use --save-config to create a new TOML config."
                         };
                         eprintln!("{}: parsed old config! {save_note}", "warn".yellow());
 
                         PackageConfig::from_old_package(package, old_config)
                     }
                     Err(err) => {
-                        eprintln!("{}: error reading old config: {err}", "warn".yellow());
+                        if !matches!(err, error::ConfigRead::FileNotFound(_)) {
+                            eprintln!("{}: error reading old config: {err}", "warn".yellow());
+                        }
                         return Err(error::ConfigRead::FileNotFound(path_buf));
                     }
                 };
@@ -461,6 +471,13 @@ impl PackageConfig {
         let Self {
             package, target, ..
         } = self;
+
+        #[cfg(debug_assertions)]
+        println!(
+            "{}: saving config to {}",
+            "debug".cyan(),
+            replace_home_with_tilde(config_path)
+        );
 
         let mut conf_to_save = self.clone();
         conf_to_save.package = replace_home_with_tilde(package).into();
