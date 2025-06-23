@@ -83,8 +83,8 @@ pub struct BoxUnboxCli {
     ///
     /// Regex (regular expression) patterns are different from glob patterns. See regex(7) for
     /// an explanation of syntax and <https://regex101.com/> for testing regex patterns.
-    #[arg(short, long = "ignore", value_name = "REGEX")]
-    pub ignore_pats: Vec<Regex>,
+    #[arg(short = 'x', long = "exclude", value_name = "REGEX")]
+    pub exclude_pats: Vec<Regex>,
     /// What to do if a file already exists in the target. This has no effect on symlinks that are
     /// created successfully.
     #[arg(short = 'e', long = "if-exists", default_value_t = ExistingFileStrategy::default(), value_name = "STRATEGY")]
@@ -168,7 +168,7 @@ impl BoxUnboxCli {
             color_override: ColorOverride::default(),
             dry_run: false,
             existing_file_strategy: ExistingFileStrategy::default(),
-            ignore_pats: Vec::new(),
+            exclude_pats: Vec::new(),
             link_root: false,
             link_type: None,
             save_config: false,

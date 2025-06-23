@@ -34,9 +34,9 @@ where
     expand_into_pathbuf(s).map_err(D::Error::custom)
 }
 
-/// Utility function returning the default value for [`PackageConfig::ignore_pats`], which is a
+/// Utility function returning the default value for [`PackageConfig::exclude_pats`], which is a
 /// Regex for the config file, `git` files, and some `.md` files.
-fn __ignore_pats_default() -> Vec<Regex> {
+fn __exclude_pats_default() -> Vec<Regex> {
     static DEFAULT_REGEX_VEC: LazyLock<Vec<Regex>> = LazyLock::new(|| {
         vec![
             #[warn(deprecated_in_future)]
@@ -85,7 +85,7 @@ pub enum LinkType {
 pub struct OldPackageConfig {
     #[serde(default = "__target_default", deserialize_with = "__de_pathbuf")]
     pub target: PathBuf,
-    #[serde(default = "__ignore_pats_default", with = "serde_regex")]
+    #[serde(default = "__exclude_pats_default", with = "serde_regex")]
     pub ignore_pats: Vec<Regex>,
     #[serde(default = "bool::default")]
     pub link_root: bool,
@@ -109,8 +109,8 @@ pub struct PackageConfig {
     #[serde(default = "__target_default", deserialize_with = "__de_pathbuf")]
     pub target: PathBuf,
     /// [`Regex`]'s that determine which file names to ignore.
-    #[serde(default = "__ignore_pats_default", with = "serde_regex")]
-    pub ignore_pats: Vec<Regex>,
+    #[serde(default = "__exclude_pats_default", with = "serde_regex")]
+    pub exclude_pats: Vec<Regex>,
     /// Only link the root package folder, creating one link.
     #[serde(default = "bool::default")]
     pub link_root: bool,
@@ -130,7 +130,7 @@ impl Default for OldPackageConfig {
     fn default() -> Self {
         Self {
             target: __target_default(),
-            ignore_pats: __ignore_pats_default(),
+            ignore_pats: __exclude_pats_default(),
             link_root: false,
             no_create_dirs: false,
             use_relative_links: false,
@@ -156,11 +156,11 @@ impl PartialEq for PackageConfig {
     fn eq(&self, other: &Self) -> bool {
         self.package == other.package
             && self.target == other.target
-            && self.ignore_pats.len() == other.ignore_pats.len()
+            && self.exclude_pats.len() == other.exclude_pats.len()
             && self
-                .ignore_pats
+                .exclude_pats
                 .iter()
-                .zip(&other.ignore_pats)
+                .zip(&other.exclude_pats)
                 .all(|(l, r)| l.as_str() == r.as_str())
             && self.link_root == other.link_root
             && self.link_type == other.link_type
@@ -283,7 +283,7 @@ impl PackageConfig {
         Self {
             package: package.into(),
             target: __target_default(),
-            ignore_pats: __ignore_pats_default(),
+            exclude_pats: __exclude_pats_default(),
             link_root: bool::default(),
             link_type: LinkType::default(),
         }
@@ -301,7 +301,7 @@ impl PackageConfig {
         Self {
             package: package.into(),
             target: target.into(),
-            ignore_pats: __ignore_pats_default(),
+            exclude_pats: __exclude_pats_default(),
             link_root: bool::default(),
             link_type: LinkType::default(),
         }
@@ -357,14 +357,14 @@ impl PackageConfig {
 
     /// Merge fields from a given [`BoxUnboxCli`] with this [`PackageConfig`]. The CLI fields are
     /// given precedence and will overwrite the config fields when prudent. [`Vec`] fields, such as
-    /// [`Self::ignore_pats`], are extended with the CLI values instead of being overwritten
+    /// [`Self::exclude_pats`], are extended with the CLI values instead of being overwritten
     /// completely.
     ///
     /// # Arguments
     ///
     /// - `cli` - CLI fields to merge with.
     pub fn merge_with_cli(&mut self, cli: &BoxUnboxCli) {
-        self.ignore_pats.extend_from_slice(&cli.ignore_pats[..]);
+        self.exclude_pats.extend_from_slice(&cli.exclude_pats[..]);
         self.link_root |= cli.link_root;
         if let Some(link_type) = cli.link_type {
             self.link_type = link_type;
@@ -386,7 +386,7 @@ impl PackageConfig {
         Self {
             package: package.into(),
             target: value.target,
-            ignore_pats: value.ignore_pats,
+            exclude_pats: value.ignore_pats,
             link_root: value.link_root,
             link_type: match (value.use_relative_links, value.use_hard_links) {
                 (_, true) => LinkType::HardLink,
@@ -472,13 +472,13 @@ mod tests {
 
         assert_eq!(conf.package, package_path);
         assert_eq!(conf.target, PathBuf::from(TEST_TARGET));
-        let expected_ignore_pats = __ignore_pats_default();
+        let expected_exclude_pats = __exclude_pats_default();
         assert!(
-            conf.ignore_pats.len() == expected_ignore_pats.len()
+            conf.exclude_pats.len() == expected_exclude_pats.len()
                 && conf
-                    .ignore_pats
+                    .exclude_pats
                     .iter()
-                    .zip(expected_ignore_pats)
+                    .zip(expected_exclude_pats)
                     .all(|(a, b)| a.as_str() == b.as_str())
         );
         assert!(!conf.link_root);
@@ -516,13 +516,13 @@ mod tests {
 
         assert_eq!(conf.package, package_path);
         assert_eq!(conf.target, PathBuf::from(TEST_TARGET));
-        let expected_ignore_pats = __ignore_pats_default();
+        let expected_exclude_pats = __exclude_pats_default();
         assert!(
-            conf.ignore_pats.len() == expected_ignore_pats.len()
+            conf.exclude_pats.len() == expected_exclude_pats.len()
                 && conf
-                    .ignore_pats
+                    .exclude_pats
                     .iter()
-                    .zip(expected_ignore_pats)
+                    .zip(expected_exclude_pats)
                     .all(|(a, b)| a.as_str() == b.as_str())
         );
         assert!(!conf.link_root);
@@ -540,7 +540,7 @@ mod tests {
         cli.link_root = true;
         cli.link_type = Some(LinkType::HardLink);
         let test_regex = Regex::new("^test$").context("failed to compile test Regex")?;
-        cli.ignore_pats = vec![test_regex];
+        cli.exclude_pats = vec![test_regex];
         let expected_target = PathBuf::from("/path/to/test/target");
         cli.target = Some(expected_target.clone());
 
@@ -549,16 +549,16 @@ mod tests {
 
         assert_eq!(conf.package, package_path);
         assert_eq!(conf.target, expected_target);
-        let expected_ignore_pats = __ignore_pats_default()
+        let expected_exclude_pats = __exclude_pats_default()
             .into_iter()
-            .chain(cli.ignore_pats.clone())
+            .chain(cli.exclude_pats.clone())
             .collect::<Vec<Regex>>();
         assert!(
-            conf.ignore_pats.len() == expected_ignore_pats.len()
+            conf.exclude_pats.len() == expected_exclude_pats.len()
                 && conf
-                    .ignore_pats
+                    .exclude_pats
                     .iter()
-                    .zip(expected_ignore_pats)
+                    .zip(expected_exclude_pats)
                     .all(|(a, b)| a.as_str() == b.as_str())
         );
         assert!(conf.link_root);

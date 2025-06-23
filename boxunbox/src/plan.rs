@@ -278,7 +278,7 @@ impl UnboxPlan {
             let file_type = entry.file_type();
             let should_be_ignored = config_stack
                 .iter()
-                .flat_map(|conf| conf.ignore_pats.clone())
+                .flat_map(|conf| conf.exclude_pats.clone())
                 .any(|re| re.is_match(&file_name));
 
             if should_be_ignored {
@@ -1314,7 +1314,7 @@ mod tests {
             expected_nested_target.clone(),
         );
         nested_config
-            .ignore_pats
+            .exclude_pats
             .push(Regex::new("^test_ignore.*").expect("test Regex should compile"));
         nested_config
             .save_to_package()
@@ -1380,7 +1380,7 @@ mod tests {
         let package_path = package.path();
         let test_regex = Regex::new("^folder1$").expect("test regex should compile");
         let mut cli = BoxUnboxCli::new(package_path);
-        cli.ignore_pats.push(test_regex.clone());
+        cli.exclude_pats.push(test_regex.clone());
         let config = PackageConfig::init(package_path, &cli)
             .context("failed to create test package config")?;
 
