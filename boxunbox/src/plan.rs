@@ -1268,6 +1268,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(not(windows))]
     #[test]
     fn test_make_relative_dest() {
         let pl = PlannedLink {
@@ -1280,6 +1281,25 @@ mod tests {
         // destination. The full, unclean path for example:
         // /path/to/deeper/target/../../package/file
         let expected_src = PathBuf::from("../package/file");
+        let actual_src = pl.get_src_relative_to_dest();
+
+        assert_eq!(expected_src, actual_src);
+    }
+
+
+    #[cfg(windows)]
+    #[test]
+    fn test_make_relative_dest() {
+        let pl = PlannedLink {
+            src: PathBuf::from("C:\\path\\to\\package\\file"),
+            dest: PathBuf::from("C:\\path\\to\\target\\file"),
+            ty: LinkType::SymlinkRelative,
+        };
+
+        // the destination is supposed to be a path to the package file that is relative to the
+        // destination. The full, unclean path for example:
+        // /path/to/deeper/target/../../package/file
+        let expected_src = PathBuf::from("..\\package\\file");
         let actual_src = pl.get_src_relative_to_dest();
 
         assert_eq!(expected_src, actual_src);
@@ -1365,7 +1385,10 @@ mod tests {
 
         // make nested config
         // NOTE: don't use TEST_TARGET here, we want to make sure the target change works
+        #[cfg(not(windows))]
         let expected_nested_target = PathBuf::from("/some/other/test/target");
+        #[cfg(windows)]
+        let expected_nested_target = PathBuf::from("S:\\some\\other\\test\\target");
         let expected_nested_package = package_path.join(TEST_NESTED_PACKAGE);
         let mut nested_config = PackageConfig::new_with_target(
             expected_nested_package.clone(),

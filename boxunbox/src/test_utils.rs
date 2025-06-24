@@ -16,7 +16,11 @@ pub const TEST_PACKAGE_FILE_TAILS: [&str; 6] = [
     "test_ignore.txt",
 ];
 
+#[cfg(not(windows))]
 pub const TEST_TARGET: &str = "/path/to/test/target";
+
+#[cfg(windows)]
+pub const TEST_TARGET: &str = "T:\\path\\to\\test\\target";
 
 /// Compare two [`Vec`]s by converting their values to [`String`]s and comparing those. Returns
 /// `true` if `left` and `right` are the same length, same order, and all elements are equal. This
