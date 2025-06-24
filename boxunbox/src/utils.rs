@@ -44,7 +44,15 @@ pub fn get_cargo_target() -> anyhow::Result<PathBuf> {
     );
 
     #[cfg(windows)]
-    let workspace_manifest_path = todo!("create OsString from locate-project output on Windows");
+    let workspace_manifest_path = <OsString as std::os::windows::ffi::OsStringExt>::from_wide(
+        &cargo_output
+            .stdout
+            .trim_ascii_end()
+            .iter()
+            .copied()
+            .map(u16::from)
+            .collect::<Vec<_>>(),
+    );
 
     Ok(Path::new(&workspace_manifest_path)
         .parent()
@@ -123,7 +131,11 @@ where
 
     #[cfg(windows)]
     {
-        todo!("PackageConfig::unbox for Windows")
+        if original.is_dir() {
+            std::os::windows::fs::symlink_dir(original, link)
+        } else {
+            std::os::windows::fs::symlink_file(original, link)
+        }
     }
 
     #[cfg(not(any(windows, unix)))]
