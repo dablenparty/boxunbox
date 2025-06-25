@@ -12,7 +12,7 @@ if [[ "$OSTYPE" =~ ^darwin.* ]]; then
   }
 fi
 
-pkgver="$(rg --color=never -Noe '^version\s*=\s*"(.+?)"$' --replace '$1' Cargo.toml)"
+pkgver="$(rg --color=never -Noe '^version\s*=\s*"(.+?)"$' --replace '$1' boxunbox/Cargo.toml)"
 if [[ -n "$(git tag --list "v$pkgver")" ]]; then
   echo "error: tag v$pkgver already exists. Did you forget to update the version in Cargo.toml?" 1>&2
   exit 1
@@ -20,11 +20,8 @@ fi
 
 # commit version bump
 cargo update
-git add Cargo.*
+git add boxunbox/Cargo.*
 git commit -m "chore: bump version (v$pkgver)"
-
-# validate cargo package
-cargo package
 
 # update PKGBUILD
 cd aur/boxunbox || exit 1

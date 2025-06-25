@@ -16,7 +16,7 @@ In all honesty, I wanted to be able to control where _each individual folder_ go
 
 ## Installation
 
-At the time of writing, there are currently three supported installation methods.
+At the time of writing, there are currently two supported installation methods. I used to publish to `crates.io` as well, but after redesigning the codebase to use subcrates, publishing to `crates.io` has become too convoluted. It requires that I publish all subcrates in order to package the binary, but I cannot publish the subcrates without packaging, making the process circular. I could probably get around this by restructuring my project yet again, but it's not worth it to me.
 
 ### Arch User Repository (AUR)
 
@@ -31,14 +31,6 @@ They aren't usually different by much. I recommend installing with an AUR helper
 paru -S boxunbox
 # or
 paru -S boxunbox-git
-```
-
-### Cargo
-
-You can install `boxunbox` from crates.io:
-
-```bash
-cargo install boxunbox
 ```
 
 ### Manual Local Installation
