@@ -54,6 +54,6 @@ Explore `cargo install --help` for more installation options.
 
 ## Configuration
 
-For CLI args, read the output of `unbox --help`. See the [example config](example.unboxrc.ron) for an overview of the config file. Alternatively, you can just view the [package config struct definition](src/package.rs) if you're comfortable with Rust.
+For the CLI, read the output of `unbox --help`. See the [example config](example.bub.toml) for an overview of the config file. Alternatively, you can just view the [package config struct definition](src/package.rs) if you're comfortable with Rust.
 
-Package config files are stored as `.unboxrc.ron` or `.unboxrc.<platform>.ron` for OS-specific configs. See [this doc page](https://doc.rust-lang.org/std/env/consts/constant.OS.html) for a list of possible values for `<platform>`, although the CLI has a flag `-o` that can create one for you automatically. OS-specific configs are always preferred when they exist.
+Package config files are stored as `.bub.toml` or `.bub.<platform>.toml` for OS-specific configs. See [this doc page](https://doc.rust-lang.org/std/env/consts/constant.OS.html) for a list of possible values for `<platform>`, although the CLI has a flag `-o` that can create one for you automatically. OS-specific configs are always preferred when they exist.
