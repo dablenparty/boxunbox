@@ -1,0 +1,16 @@
+# Directory to create symlinks in. Supports ~ and $ENVVARS
+target = "~/Documents/repos/boxunbox/boxunbox/demo/dest"
+# Exclude files/folders with regex patterns. Below is the default.
+exclude = [
+    "^(README|LICEN[CS]E|COPYING).*$",
+    '^\.git.*$',
+    "^test_ignore.*$",
+    '\.bub\.toml$',
+]
+# You can also include files/folders; see the output of unbox --help
+# for more info.
+include = []
+# Link the package dir directly to the target dir, making one symlink.
+link_root = false
+# Create "absolute", "relative", or "hard" links.
+link_type = "absolute"

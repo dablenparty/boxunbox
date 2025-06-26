@@ -1,37 +1,25 @@
-[package]
-name = "boxunbox"
-version = "0.1.26"
-edition = "2024"
-license-file = "LICENSE"
-readme = "README.md"
-description = "A simple symlinker inspired by GNU stow"
-repository = "https://github.com/dablenparty/boxunbox"
-categories = ["command-line-utilities", "filesystem"]
+[workspace]
+resolver = "3"
+members = ["boxunbox", "boxunbox-mangen", "boxunbox-shell-complete"]
 exclude = ["aur/*", "demo/*", "*.sh"]
 
-[[bin]]
-name = "unbox"
-path = "src/main.rs"
+[workspace.dependencies]
+anyhow = "1.0.98"
+boxunbox = { path = "boxunbox", version = "*" }
+clap = { version = "4.5.40", features = ["derive", "cargo", "unicode"] }
 
-[dependencies]
-anyhow = "1.0.96"
-clap = { version = "4.5.31", features = ["derive", "cargo", "unicode"] }
-colored = "3.0.0"
-const_format = { version = "0.2.34", features = ["fmt"] }
-directories-next = "2.0.0"
-expandenv = "0.1.0"
-path-clean = "1.0.1"
-pathdiff = "0.2.3"
-regex = "1.11.1"
-ron = "0.10.1"
-serde = { version = "1.0.218", features = ["derive"] }
-serde_regex = "1.1.0"
-thiserror = "2.0.11"
-walkdir = "2.5.0"
+[profile.dev]
+opt-level = 0
+debug = true
+panic = "abort"
+
+[profile.test]
+opt-level = 0
+debug = true
 
 [profile.release]
-opt-level = "z"
-strip = true
+opt-level = 3
+strip = "debuginfo"
 lto = true
 codegen-units = 1
 panic = "abort"

@@ -1,0 +1,14 @@
+[package]
+name = "boxunbox-mangen"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "mangen"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+boxunbox.workspace = true
+clap.workspace = true
+clap_mangen = "0.2.27"

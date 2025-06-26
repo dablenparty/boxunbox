@@ -16,7 +16,7 @@ In all honesty, I wanted to be able to control where _each individual folder_ go
 
 ## Installation
 
-At the time of writing, there are currently three supported installation methods.
+At the time of writing, there are currently two supported installation methods. I used to publish to `crates.io` as well, but after redesigning the codebase to use subcrates, publishing to `crates.io` has become too convoluted. It requires that I publish all subcrates in order to package the binary, but I cannot publish the subcrates without packaging, making the process circular. I could probably get around this by restructuring my project yet again, but it's not worth it to me.
 
 ### Arch User Repository (AUR)
 
@@ -33,14 +33,6 @@ paru -S boxunbox
 paru -S boxunbox-git
 ```
 
-### Cargo
-
-You can install `boxunbox` from crates.io:
-
-```bash
-cargo install boxunbox
-```
-
 ### Manual Local Installation
 
 First, clone the repostiory, then compile/install with one command:
@@ -54,6 +46,6 @@ Explore `cargo install --help` for more installation options.
 
 ## Configuration
 
-For CLI args, read the output of `unbox --help`. See the [example config](example.unboxrc.ron) for an overview of the config file. Alternatively, you can just view the [package config struct definition](src/package.rs) if you're comfortable with Rust.
+For the CLI, read the output of `unbox --help`. See the [example config](example.bub.toml) for an overview of the config file. Alternatively, you can just view the [package config struct definition](src/package.rs) if you're comfortable with Rust.
 
-Package config files are stored as `.unboxrc.ron` or `.unboxrc.<platform>.ron` for OS-specific configs. See [this doc page](https://doc.rust-lang.org/std/env/consts/constant.OS.html) for a list of possible values for `<platform>`, although the CLI has a flag `-o` that can create one for you automatically. OS-specific configs are always preferred when they exist.
+Package config files are stored as `.bub.toml` or `.bub.<platform>.toml` for OS-specific configs. See [this doc page](https://doc.rust-lang.org/std/env/consts/constant.OS.html) for a list of possible values for `<platform>`, although the CLI has a flag `-o` that can create one for you automatically. OS-specific configs are always preferred when they exist.

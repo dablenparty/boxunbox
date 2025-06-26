@@ -1,0 +1,10 @@
+target = "~/Documents/repos/boxunbox/boxunbox/demo/dest"
+exclude = [
+    "^(README|LICEN[CS]E|COPYING).*$",
+    '^\.git.*$',
+    "^test_ignore.*$",
+    '\.bub\.toml$',
+]
+include = []
+link_root = false
+link_type = "absolute"
