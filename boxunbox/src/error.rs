@@ -27,8 +27,6 @@ pub enum UnboxError {
     #[warn(deprecated_in_future)]
     #[error("failed to save TOML config")]
     ConfigWrite(#[from] ConfigWrite),
-    #[error("dry run, not executing")]
-    DryRun,
     #[error("failed to unbox {pl:?}")]
     Io {
         pl: PlannedLink,

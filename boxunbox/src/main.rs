@@ -46,10 +46,10 @@ fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
     println!("{}", unboxing_plan.display(&config));
 
     if cli.dry_run {
-        return Err(UnboxError::DryRun);
+        eprintln!("dry run, not executing");
+    } else {
+        unboxing_plan.unbox()?;
     }
-
-    unboxing_plan.unbox()?;
 
     Ok(())
 }
