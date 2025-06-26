@@ -1,3 +1,18 @@
+## [0.2.1](https://github.com/dablenparty/boxunbox/compare/v0.2.0..v0.2.1) - 2025-06-26
+
+### 🐛 Bug Fixes
+
+- Unbox multiple packages - ([ec74396](https://github.com/dablenparty/boxunbox/commit/ec7439680a7ec37d23a5428e8315e0a7d01e0444))
+
+### ⚙️ Miscellaneous Tasks
+
+- Bump version (v0.2.1) - ([bc1f42c](https://github.com/dablenparty/boxunbox/commit/bc1f42c522168f0b9921ee2a607348ee2a51076a))
+- PKGBUILD v0.2.0 - ([dcf2950](https://github.com/dablenparty/boxunbox/commit/dcf295097b801a95ec95e5bfbae44be89a45ccfb))
+
+## New Contributors ❤️
+
+* @dablenparty made their first contribution
+
 ## [0.2.0](https://github.com/dablenparty/boxunbox/compare/v0.1.26..v0.2.0) - 2025-06-26
 
 ### ⛰️  Features
@@ -138,7 +153,7 @@
 - *(plan)* Remove allow directive - ([0a952a2](https://github.com/dablenparty/boxunbox/commit/0a952a250d58bfd52e881a71cf42e1a2db6482a7))
 - *(plan)* Implement unboxing (again) - ([1e1314a](https://github.com/dablenparty/boxunbox/commit/1e1314adfafd4dbbf9af8edc69259e2e8c02f262))
 - *(utils)* Create replace_home_with_tilde - ([7006c7e](https://github.com/dablenparty/boxunbox/commit/7006c7e9adc1753eb7a114e0bff213107920de01))
-- Bump version (v0.2.0) - ([172a212](https://github.com/dablenparty/boxunbox/commit/172a212deb8b43dbe9790a7d4ade615b90b68df7))
+- Bump version (v0.2.0) - ([5100933](https://github.com/dablenparty/boxunbox/commit/5100933aad60a33728a32450c667155768eaa4c4))
 - Add include_pats field - ([2854819](https://github.com/dablenparty/boxunbox/commit/2854819037bb4348965cd6f969d567b2a92c98aa))
 - Create boxunbox-shell-complete subcrate - ([fee21c9](https://github.com/dablenparty/boxunbox/commit/fee21c98bd31ef5cc3366449ccafa9285797fdb1))
 - Create boxunbox-mangen subcrate - ([2953f77](https://github.com/dablenparty/boxunbox/commit/2953f77f9e1e31c881aa7fae5cab43f29dcc92f2))
@@ -152,9 +167,6 @@
 - Bump expandenv version - ([1c3c176](https://github.com/dablenparty/boxunbox/commit/1c3c176be3a7cf1e0050794a00c76288201cb1f7))
 - Enable clippy again - ([12361ae](https://github.com/dablenparty/boxunbox/commit/12361aeec3d1bba95c12147efad87359aec13f88))
 
-## New Contributors ❤️
-
-* @dablenparty made their first contribution
 
 ## [0.1.26](https://github.com/dablenparty/boxunbox/compare/v0.1.25..v0.1.26) - 2025-05-08
 
