@@ -4,7 +4,7 @@
 
 ## Comparison to GNU `stow`
 
-In all honesty, I wanted to be able to control where _each individual folder_ got linked and the way `stow` handles the `.stowrc` files isn't very intuitive in my opinion. Therefore, `boxunbox` stores its config files in the packages themselves. For example, `unbox zsh` would use the config _inside_ the `zsh/` folder, not the current working directory like `stow`. This means you can also [nest config files](demo/src/folder2/.unboxrc.ron) and they'll be respected by design.
+In all honesty, I wanted to be able to control where _each individual folder_ got linked and the way `stow` handles the `.stowrc` files isn't very intuitive in my opinion. Therefore, `boxunbox` stores its config files in the packages themselves. For example, `unbox zsh` would use the config at `zsh/.bub.toml`, not the current working directory like `stow`. This means you can also [nest config files](boxunbox/demo/src/folder2/.bub.toml) and they'll be respected by design.
 
 | `boxunbox`                                                            | `stow`                                   |
 | --------------------------------------------------------------------- | ---------------------------------------- |
@@ -16,7 +16,7 @@ In all honesty, I wanted to be able to control where _each individual folder_ go
 
 ## Installation
 
-At the time of writing, there are currently two supported installation methods. I used to publish to `crates.io` as well, but after redesigning the codebase to use subcrates, publishing to `crates.io` has become too convoluted. It requires that I publish all subcrates in order to package the binary, but I cannot publish the subcrates without packaging, making the process circular. I could probably get around this by restructuring my project yet again, but it's not worth it to me.
+At the time of writing, there are currently two supported installation methods: via the AUR or manually, with `cargo`. I used to publish to `crates.io` as well, but after redesigning the codebase to use subcrates, publishing to `crates.io` has become too convoluted. It requires that I publish all subcrates in order to package the binary, but I cannot publish the subcrates without packaging, making the process circular. I could probably get around this by restructuring my project yet again, but it's not worth it to me.
 
 ### Arch User Repository (AUR)
 
@@ -46,6 +46,6 @@ Explore `cargo install --help` for more installation options.
 
 ## Configuration
 
-For the CLI, read the output of `unbox --help`. See the [example config](example.bub.toml) for an overview of the config file. Alternatively, you can just view the [package config struct definition](src/package.rs) if you're comfortable with Rust.
+For the CLI, read the output of `unbox --help`. See the [example config](example.bub.toml) for an overview of the config file. Alternatively, you can just view the [package config struct definition](boxunbox/src/package.rs) if you're comfortable with Rust.
 
 Package config files are stored as `.bub.toml` or `.bub.<platform>.toml` for OS-specific configs. See [this doc page](https://doc.rust-lang.org/std/env/consts/constant.OS.html) for a list of possible values for `<platform>`, although the CLI has a flag `-o` that can create one for you automatically. OS-specific configs are always preferred when they exist.
