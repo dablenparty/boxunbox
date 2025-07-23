@@ -17,13 +17,17 @@ env:
 jobs:
   build-and-test:
     runs-on: docker
+    strategy:
+      matrix:
+        cargo-args: ['--release', '']
+
     container:
       image: cimg/rust:1.88-node
 
     steps:
     - uses: actions/checkout@v4
     - name: Build
-      run: cargo build --verbose
+      run: cargo build ${{ matrix.cargo-args }} --all-features --locked --verbose --workspace
     - name: Run tests
-      run: cargo test --workspace --verbose
+      run: cargo test ${{ matrix.cargo-args }} --all-features --frozen --verbose --workspace
 
