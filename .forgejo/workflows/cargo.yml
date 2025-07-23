@@ -26,8 +26,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Fetch dependencies
+      run: |
+        cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
     - name: Build
-      run: cargo build ${{ matrix.cargo-args }} --all-features --locked --verbose --workspace
+      run: cargo build ${{ matrix.cargo-args }} --all-features --frozen --verbose --workspace
     - name: Run tests
       run: cargo test ${{ matrix.cargo-args }} --all-features --frozen --verbose --workspace
 
