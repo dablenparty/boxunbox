@@ -2,15 +2,14 @@ name: Build and Test with Cargo
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  build-and-test:
     runs-on: docker
     container:
       image: cimg/rust:1.88-node
