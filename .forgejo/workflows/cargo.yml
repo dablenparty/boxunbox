@@ -11,10 +11,9 @@ env:
 
 jobs:
   build:
-
     runs-on: docker
     container:
-      image: rust:1.88
+      image: cimg/rust:1.88-node
 
     steps:
     - uses: actions/checkout@v4
