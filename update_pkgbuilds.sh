@@ -19,6 +19,8 @@ cd aur/boxunbox
 git pull
 # replace the version
 sed -Ei "s/^pkgver=.+?/pkgver=$pkgver/" PKGBUILD
+# reset pkgrel
+sed -Ei "s/^pkgrel=.+?/pkgrel=1/" PKGBUILD
 # generate checksums for the new version
 checksums="${ makepkg --nocolor --geninteg -p PKGBUILD | rg --color=never -o 'sha256sums=(.+)'; }"
 sed -Ei "s/^sha256sums=.+?/$checksums/" PKGBUILD
