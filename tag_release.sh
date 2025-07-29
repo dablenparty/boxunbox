@@ -13,23 +13,24 @@ if [[ "$OSTYPE" =~ ^darwin.* ]]; then
   }
 fi
 
-pkgver="$(rg --color=never -Noe '^version\s*=\s*"(.+?)"$' --replace '$1' boxunbox/Cargo.toml)"
-if [[ -n "$(git tag --list "v$pkgver")" ]]; then
-  echo "warn: tag v$pkgver already exists, it will be removed" 1>&2
-  git tag -d "v$pkgver"
+pkgver="${ rg --color=never -Noe '^version\s*=\s*"(.+?)"$' --replace '$1' boxunbox/Cargo.toml; }"
+gittag="v$pkgver"
+if [[ -n "${ git tag --list "$gittag"; }" ]]; then
+  echo "warn: tag $gittag already exists, it will be removed" 1>&2
+  git tag -d "$gittag"
 fi
 
 # commit version bump
 cargo update
 git add Cargo.lock boxunbox/Cargo.toml
-git commit -m "chore: bump version (v$pkgver)"
+git commit -m "chore: bump version ($gittag)"
 
 # tag new commit for git cliff
-git tag -- "v$pkgver" "$(git rev-parse HEAD)"
+git tag -- "$gittag" "${ git rev-parse HEAD; }"
 
 # update the CHANGELOG and amend it to the tagged commit
 git cliff -o CHANGELOG.md
 git add CHANGELOG.md
 git commit --amend --no-edit --allow-empty
 # re-tag commit after amending CHANGELOG because hash changes
-git tag --force -- "v$pkgver" "$(git rev-parse HEAD)"
+git tag --force -- "$gittag" "${ git rev-parse HEAD; }"
