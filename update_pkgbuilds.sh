@@ -12,7 +12,7 @@ if [[ "$OSTYPE" =~ ^darwin.* ]]; then
   }
 fi
 
-pkgver="$(rg --color=never -Noe '^version\s*=\s*"(.+?)"$' --replace '$1' boxunbox/Cargo.toml)"
+pkgver="${ rg --color=never -Noe '^version\s*=\s*"(.+?)"$' --replace '$1' boxunbox/Cargo.toml; }"
 
 cd aur/boxunbox
 # prevents detached HEAD
@@ -20,7 +20,7 @@ git pull
 # replace the version
 sed -Ei "s/^pkgver=.+?/pkgver=$pkgver/" PKGBUILD
 # generate checksums for the new version
-checksums="$(makepkg --nocolor --geninteg -p PKGBUILD | rg --color=never -o 'sha256sums=(.+)')"
+checksums="${ makepkg --nocolor --geninteg -p PKGBUILD | rg --color=never -o 'sha256sums=(.+)'; }"
 sed -Ei "s/^sha256sums=.+?/$checksums/" PKGBUILD
 makepkg --printsrcinfo >.SRCINFO
 
