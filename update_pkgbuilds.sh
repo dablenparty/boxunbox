@@ -5,9 +5,18 @@ set -eo pipefail
 # HOW TO USE
 # Once you've pushed a tagged release to GitHub, use this script to update the tagged PKGBUILD based on the new release.
 
+if [[ "$OSTYPE" =~ ^darwin.* ]]; then
+  # alias macOS sed to GNU sed for simplicity
+  sed() {
+    gsed "$@"
+  }
+fi
+
 pkgver="$(rg --color=never -Noe '^version\s*=\s*"(.+?)"$' --replace '$1' boxunbox/Cargo.toml)"
 
 cd aur/boxunbox
+# prevents detached HEAD
+git pull
 # replace the version
 sed -Ei "s/^pkgver=.+?/pkgver=$pkgver/" PKGBUILD
 # generate checksums for the new version
