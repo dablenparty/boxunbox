@@ -1,4 +1,4 @@
-target = "~/Documents/repos/boxunbox/demo/dest/folder2"
+target = "~/Documents/repos/boxunbox/boxunbox/demo/dest/folder2"
 exclude = [
     '\.unboxrc.*$',
     ".*again.*",
