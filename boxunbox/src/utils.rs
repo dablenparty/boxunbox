@@ -99,7 +99,7 @@ pub fn expand_into_pathbuf<S: AsRef<str>>(s: S) -> anyhow::Result<PathBuf> {
 }
 
 /**
-Create a new symbolic (soft) link using OS-specific functions.
+Create a new symbolic (soft) link using OS-specific functions. `link` points to `original`.
 
 This is really just a wrapper function.
 
