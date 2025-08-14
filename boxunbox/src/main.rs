@@ -48,7 +48,14 @@ fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
     if cli.dry_run {
         eprintln!("dry run, not executing");
     } else {
-        unboxing_plan.unbox()?;
+        let unboxed_links = unboxing_plan.unbox()?;
+        let links_noun = if unboxed_links.len() == 1 {
+            "link"
+        } else {
+            "links"
+        };
+        println!("Successfully unboxed {} {links_noun}!", unboxed_links.len());
+        // TODO: store list of unboxed files in cache file for boxing up later
     }
 
     Ok(())

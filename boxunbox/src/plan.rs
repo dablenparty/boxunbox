@@ -373,22 +373,23 @@ impl UnboxPlan {
     }
 
     /// Unbox the package according to this [`UnboxPlan`], handling any existing target files along
-    /// the way.
+    /// the way and returning a [`Vec`] of successfully unboxed [`PlannedLink`]s.
     ///
     /// # Errors
     ///
     /// An error will be returned if:
-    /// - When using [`ExistingFileStrategy::Adopt`], the target file is a symlink, or cannot be
-    ///   copied to the package, or cannot be removed after.
-    /// - When using [`ExistingFileStrategy::Move`], the target file cannot be moved.
-    /// - When using [`ExistingFileStrategy::Overwrite`], the target file cannot be removed.
-    /// - In any case, [`PlannedLink::unbox`] returns an error.
+    /// - The target file is a symlink, or cannot be copied to the package, or cannot be removed
+    ///   after adoption when using [`ExistingFileStrategy::Adopt`].
+    /// - The target file cannot be moved when using [`ExistingFileStrategy::Move`].
+    /// - The target file cannot be removed when using [`ExistingFileStrategy::Overwrite`],
+    /// - [`PlannedLink::unbox`] returns an error.
     ///
     /// # Panics
     ///
     /// This function will panic if a file name cannot be retrieved from a [`PlannedLink`]. Their
     /// `src` and `dest` fields are expected to be absolute paths.
-    pub fn unbox(&self) -> Result<(), UnboxError> {
+    pub fn unbox(&self) -> Result<Vec<PlannedLink>, UnboxError> {
+        let mut unboxed_links = Vec::with_capacity(self.links.capacity());
         for pl in &self.links {
             let PlannedLink { src, dest, .. } = &pl;
 
@@ -418,6 +419,7 @@ impl UnboxPlan {
                     }
                     ExistingFileStrategy::Adopt => {
                         // TODO: force adopt symlink with CLI flag?
+                        // maybe follow the symlink and adopt that file?
                         return Err(UnboxError::AdoptSymlink(pl.clone()));
                     }
                     ExistingFileStrategy::Ignore => {
@@ -472,9 +474,12 @@ impl UnboxPlan {
                 pl: pl.clone(),
                 source: err,
             })?;
+
+            unboxed_links.push(pl.clone());
         }
 
-        Ok(())
+        unboxed_links.shrink_to_fit();
+        Ok(unboxed_links)
     }
 }
 
@@ -514,7 +519,16 @@ mod tests {
             stringify!(ExistingFileStrategy)
         );
 
-        expected_plan.unbox()?;
+        let unboxed_links = expected_plan
+            .unbox()
+            .context("failed to unbox test package")?;
+        assert_eq!(
+            unboxed_links,
+            expected_plan.links,
+            "expected {:?} links, unboxed {:?} links",
+            expected_plan.links.len(),
+            unboxed_links.len()
+        );
 
         for link in expected_plan.links {
             let PlannedLink { src, dest, .. } = link;
@@ -583,7 +597,14 @@ mod tests {
             stringify!(ExistingFileStrategy)
         );
 
-        expected_plan.unbox()?;
+        let unboxed_links = expected_plan.unbox()?;
+        assert_eq!(
+            unboxed_links,
+            expected_plan.links,
+            "expected {:?} links, unboxed {:?} links",
+            expected_plan.links.len(),
+            unboxed_links.len()
+        );
 
         for link in expected_plan.links {
             let PlannedLink { src, dest, .. } = link;
@@ -635,9 +656,16 @@ mod tests {
             stringify!(ExistingFileStrategy)
         );
 
-        expected_plan
+        let unboxed_links = expected_plan
             .unbox()
             .context("failed to unbox test package")?;
+        assert_eq!(
+            unboxed_links,
+            expected_plan.links,
+            "expected {:?} links, unboxed {:?} links",
+            expected_plan.links.len(),
+            unboxed_links.len()
+        );
 
         for link in expected_plan.links {
             let PlannedLink { src, dest, .. } = link;
@@ -689,9 +717,16 @@ mod tests {
             stringify!(ExistingFileStrategy)
         );
 
-        expected_plan
+        let unboxed_links = expected_plan
             .unbox()
             .context("failed to unbox test package")?;
+        assert_eq!(
+            unboxed_links,
+            expected_plan.links,
+            "expected {:?} links, unboxed {:?} links",
+            expected_plan.links.len(),
+            unboxed_links.len()
+        );
 
         for link in expected_plan.links {
             let relative_src = link.get_src_relative_to_dest();
@@ -744,9 +779,16 @@ mod tests {
             stringify!(ExistingFileStrategy)
         );
 
-        expected_plan
+        let unboxed_links = expected_plan
             .unbox()
             .context("failed to unbox test package")?;
+        assert_eq!(
+            unboxed_links,
+            expected_plan.links,
+            "expected {:?} links, unboxed {:?} links",
+            expected_plan.links.len(),
+            unboxed_links.len()
+        );
 
         for link in expected_plan.links {
             let PlannedLink { src, dest, .. } = link;
@@ -812,11 +854,15 @@ mod tests {
             .collect::<UnboxPlan>();
         expected_plan.efs = ExistingFileStrategy::Adopt;
 
-        let unbox_result = expected_plan.unbox();
-        assert!(
-            unbox_result.is_ok(),
-            "unboxing failed with unexpected error {:?}",
-            unbox_result.unwrap_err()
+        let unboxed_links = expected_plan
+            .unbox()
+            .context("failed to unbox test package")?;
+        assert_eq!(
+            unboxed_links,
+            expected_plan.links,
+            "expected {:?} links, unboxed {:?} links",
+            expected_plan.links.len(),
+            unboxed_links.len()
         );
 
         for link in expected_plan.links {
@@ -962,6 +1008,7 @@ mod tests {
                 .context("failed to create test target file")?
                 .write_all(EXISTING_TARGET_FILE_CONTENTS.as_bytes())?;
         }
+
         let mut expected_plan = TEST_PACKAGE_FILE_TAILS
             .iter()
             .map(|tail| PlannedLink {
@@ -969,34 +1016,37 @@ mod tests {
                 dest: expected_target.join(tail),
                 ty: LinkType::SymlinkAbsolute,
             })
+            .filter(|pl| *pl != expected_pl)
             .collect::<UnboxPlan>();
         expected_plan.efs = ExistingFileStrategy::Ignore;
 
-        let unbox_result = expected_plan.unbox();
-        assert!(
-            unbox_result.is_ok(),
-            "unboxing failed with unexpected error {:?}",
-            unbox_result.unwrap_err()
+        let unboxed_links = expected_plan
+            .unbox()
+            .context("failed to unbox test package")?;
+        assert_eq!(
+            unboxed_links,
+            expected_plan.links,
+            "expected {:?} links, unboxed {:?} links",
+            expected_plan.links.len(),
+            unboxed_links.len()
+        );
+
+        // This link should be ignored; therefore, the target file contents shouldn't match
+        // the source file contents because it should point elsewhere.
+        let src_contents =
+            fs::read_to_string(&expected_pl.src).context("failed to read test src file")?;
+        assert_ne!(
+            EXISTING_TARGET_FILE_CONTENTS, src_contents,
+            "test src file has unexpected file contents '{src_contents:?}'"
+        );
+        let dest_contents =
+            fs::read_to_string(&expected_pl.dest).context("failed to read existing target file")?;
+        assert_eq!(
+            EXISTING_TARGET_FILE_CONTENTS, dest_contents,
+            "existing target file has unexpected file contents '{dest_contents:?}'"
         );
 
         for link in expected_plan.links {
-            // this one is already handled; skip it
-            if link == expected_pl {
-                let src_contents =
-                    fs::read_to_string(&link.src).context("failed to read test src file")?;
-                assert_ne!(
-                    EXISTING_TARGET_FILE_CONTENTS, src_contents,
-                    "test src file has unexpected file contents '{src_contents:?}'"
-                );
-                let dest_contents = fs::read_to_string(&link.dest)
-                    .context("failed to read existing target file")?;
-                assert_eq!(
-                    EXISTING_TARGET_FILE_CONTENTS, dest_contents,
-                    "existing target file has unexpected file contents '{dest_contents:?}'"
-                );
-                continue;
-            }
-
             let PlannedLink { src, dest, .. } = link;
 
             assert!(
@@ -1057,11 +1107,15 @@ mod tests {
             .collect::<UnboxPlan>();
         expected_plan.efs = ExistingFileStrategy::Move;
 
-        let unbox_result = expected_plan.unbox();
-        assert!(
-            unbox_result.is_ok(),
-            "unboxing failed with unexpected error {:?}",
-            unbox_result.unwrap_err()
+        let unboxed_links = expected_plan
+            .unbox()
+            .context("failed to unbox test package")?;
+        assert_eq!(
+            unboxed_links,
+            expected_plan.links,
+            "expected {:?} links, unboxed {:?} links",
+            expected_plan.links.len(),
+            unboxed_links.len()
         );
 
         for link in expected_plan.links {
@@ -1161,11 +1215,15 @@ mod tests {
             .collect::<UnboxPlan>();
         expected_plan.efs = ExistingFileStrategy::Overwrite;
 
-        let unbox_result = expected_plan.unbox();
-        assert!(
-            unbox_result.is_ok(),
-            "unboxing failed with unexpected error {:?}",
-            unbox_result.unwrap_err()
+        let unboxed_links = expected_plan
+            .unbox()
+            .context("failed to unbox test package")?;
+        assert_eq!(
+            unboxed_links,
+            expected_plan.links,
+            "expected {:?} links, unboxed {:?} links",
+            expected_plan.links.len(),
+            unboxed_links.len()
         );
 
         for link in expected_plan.links {
@@ -1243,11 +1301,15 @@ mod tests {
             .collect::<UnboxPlan>();
         expected_plan.efs = ExistingFileStrategy::Overwrite;
 
-        let unbox_result = expected_plan.unbox();
-        assert!(
-            unbox_result.is_ok(),
-            "unboxing failed with unexpected error {:?}",
-            unbox_result.unwrap_err()
+        let unboxed_links = expected_plan
+            .unbox()
+            .context("failed to unbox test package")?;
+        assert_eq!(
+            unboxed_links,
+            expected_plan.links,
+            "expected {:?} links, unboxed {:?} links",
+            expected_plan.links.len(),
+            unboxed_links.len()
         );
 
         for link in expected_plan.links {
