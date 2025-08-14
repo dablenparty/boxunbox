@@ -904,7 +904,7 @@ mod tests {
             UnboxError::AdoptSymlink(actual_pl) => {
                 assert_eq!(
                     expected_pl, actual_pl,
-                    "unboxing failed to adopt unexepected link {actual_pl:?}"
+                    "unboxing failed to adopt unexpected link {actual_pl:?}"
                 );
             }
             err => panic!("unboxing failed with unexpected error: {err:?}"),
@@ -1125,7 +1125,7 @@ mod tests {
     }
 
     #[test]
-    fn test_unbox_efs_overwrite() -> anyhow::Result<()> {
+    fn test_unbox_efs_overwrite_file() -> anyhow::Result<()> {
         const EXISTING_TARGET_FILE_CONTENTS: &str = "i already exist";
 
         let package = make_tmp_tree().context("failed to make test package")?;
@@ -1175,6 +1175,88 @@ mod tests {
                 assert_ne!(
                     EXISTING_TARGET_FILE_CONTENTS, src_contents,
                     "test src file has unexpected file contents '{src_contents:?}'"
+                );
+                // NOTE: most other tests have a `continue` here; this test does not because the
+                // `dest` link still needs to be checked normally.
+            }
+
+            let PlannedLink { src, dest, .. } = link;
+
+            assert!(
+                dest.try_exists()
+                    .with_context(|| format!("failed to verify existence of {}", dest.display()))?,
+                "{} exists",
+                dest.display()
+            );
+            assert!(dest.is_symlink(), "expected symlink at {}", dest.display());
+            let actual_link_target = fs::read_link(&dest)
+                .with_context(|| format!("failed to read link info for {}", dest.display()))?;
+            assert_eq!(
+                src,
+                actual_link_target,
+                "{} does not point to {}",
+                actual_link_target.display(),
+                src.display()
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_unbox_efs_overwrite_symlink() -> anyhow::Result<()> {
+        const EXISTING_TARGET_FILE_CONTENTS: &str = "i already exist";
+
+        let package = make_tmp_tree().context("failed to make test package")?;
+        let package_path = package.path();
+
+        let target = tempfile::tempdir().context("failed to create temp target")?;
+        let target_path = target.path();
+        let expected_target = PathBuf::from(target_path);
+
+        let test_file_tail = TEST_PACKAGE_FILE_TAILS[0];
+        let expected_pl = PlannedLink {
+            src: package_path.join(test_file_tail),
+            dest: expected_target.join(test_file_tail),
+            ty: LinkType::SymlinkAbsolute,
+        };
+        // create the file in it's own scope to close file descriptor asap
+        {
+            let parent = expected_pl.dest.parent().with_context(|| {
+                format!("failed to get parent of {}", expected_pl.dest.display())
+            })?;
+            let expected_file = expected_pl.dest.with_file_name("link_to_me");
+            fs::create_dir_all(parent).context("failed to create test target parent")?;
+            fs::File::create_new(&expected_file)
+                .context("failed to create test target file")?
+                .write_all(EXISTING_TARGET_FILE_CONTENTS.as_bytes())?;
+            os_symlink(expected_file, &expected_pl.dest)
+                .context("failed to create test target link")?;
+        }
+        let mut expected_plan = TEST_PACKAGE_FILE_TAILS
+            .iter()
+            .map(|tail| PlannedLink {
+                src: package_path.join(tail),
+                dest: expected_target.join(tail),
+                ty: LinkType::SymlinkAbsolute,
+            })
+            .collect::<UnboxPlan>();
+        expected_plan.efs = ExistingFileStrategy::Overwrite;
+
+        let unbox_result = expected_plan.unbox();
+        assert!(
+            unbox_result.is_ok(),
+            "unboxing failed with unexpected error {:?}",
+            unbox_result.unwrap_err()
+        );
+
+        for link in expected_plan.links {
+            if link == expected_pl {
+                let dest_contents =
+                    fs::read_to_string(&link.dest).context("failed to read test existing file")?;
+                assert_ne!(
+                    EXISTING_TARGET_FILE_CONTENTS, dest_contents,
+                    "test src file has unexpected file contents '{dest_contents:?}'"
                 );
                 // NOTE: most other tests have a `continue` here; this test does not because the
                 // `dest` link still needs to be checked normally.
@@ -1286,7 +1368,6 @@ mod tests {
         assert_eq!(expected_src, actual_src);
     }
 
-
     #[cfg(windows)]
     #[test]
     fn test_make_relative_dest() {
@@ -1316,7 +1397,7 @@ mod tests {
 
         assert!(
             actual_result.is_err(),
-            "unexpectedly planned unboxing succesfully"
+            "unexpectedly planned unboxing successfully"
         );
 
         match actual_result.unwrap_err() {
