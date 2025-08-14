@@ -14,7 +14,7 @@ use crate::constants::BASE_DIRS;
 ///
 /// # Errors
 ///
-/// An error is returned if `cargo locate-project` retruns a non-zero exit code.
+/// An error is returned if `cargo locate-project` returns a non-zero exit code.
 ///
 /// # Panics
 ///
@@ -113,7 +113,7 @@ This is really just a wrapper function.
 See the following for error descriptions:
 
 - Unix: [`std::os::unix::fs::symlink`]
-- Windows: TODO
+- Windows: [`std::os::windows::fs::symlink_dir`] and [`std::os::windows::fs::symlink_file`]
 */
 pub fn os_symlink<P, Q>(original: P, link: Q) -> io::Result<()>
 where
