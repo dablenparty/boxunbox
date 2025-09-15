@@ -392,14 +392,24 @@ impl UnboxPlan {
         let mut unboxed_links = Vec::with_capacity(self.links.capacity());
         for pl in &self.links {
             let PlannedLink { src, dest, .. } = &pl;
+            // using `try_exists` follows symlinks; therefore, if a link is invalid (i.e. the link
+            // exists but the file it points to doesn't), `try_exists` returns false even though the
+            // link exists. `symlink_metadata` reads metadata without following symlinks.
+            let (dest_exists, dest_is_symlink) = match dest.symlink_metadata() {
+                Ok(md) => (true, md.is_symlink()),
+                Err(err) if err.kind() == io::ErrorKind::NotFound => (false, false),
+                Err(err) => {
+                    return Err(UnboxError::Io {
+                        pl: pl.clone(),
+                        source: err,
+                    });
+                }
+            };
 
-            if dest.try_exists().map_err(|err| UnboxError::Io {
-                pl: pl.clone(),
-                source: err,
-            })? {
+            if dest_exists {
                 // TODO: put messages behind --verbose flag (idk how to go about this)
                 match self.efs {
-                    ExistingFileStrategy::Adopt if !dest.is_symlink() => {
+                    ExistingFileStrategy::Adopt if !dest_is_symlink => {
                         // If dest is a symlink, it might point to the src file, which means we'd
                         // be copying a file into itself, thus truncating it. Not ideal.
                         eprintln!(
