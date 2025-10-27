@@ -13,7 +13,7 @@ use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, de::Error};
 
 use crate::{
-    cli::BoxUnboxCli,
+    cli::UnboxCli,
     constants::BASE_DIRS,
     utils::{expand_into_pathbuf, replace_home_with_tilde},
 };
@@ -345,7 +345,7 @@ impl PackageConfig {
     }
 
     /// Try to read a config file from the given `package` directory. Package options are
-    /// merged with [`BoxUnboxCli`] flags of the same name.
+    /// merged with [`UnboxCli`] flags of the same name.
     ///
     /// # Arguments
     ///
@@ -381,10 +381,7 @@ impl PackageConfig {
     ///
     /// An error will be returned if one occurs while parsing the package config file. For more
     /// information, see [`Self::try_from_package`].
-    pub fn init<P: Into<PathBuf>>(
-        package: P,
-        cli: &BoxUnboxCli,
-    ) -> Result<Self, error::ConfigRead> {
+    pub fn init<P: Into<PathBuf>>(package: P, cli: &UnboxCli) -> Result<Self, error::ConfigRead> {
         let package = package.into();
         let mut config = match Self::try_from_package(&package) {
             Ok(config) => config,
@@ -425,7 +422,7 @@ impl PackageConfig {
         Ok(config)
     }
 
-    /// Merge fields from a given [`BoxUnboxCli`] with this [`PackageConfig`]. The CLI fields are
+    /// Merge fields from a given [`UnboxCli`] with this [`PackageConfig`]. The CLI fields are
     /// given precedence and will overwrite the config fields when prudent. [`Vec`] fields, such as
     /// [`Self::exclude_pats`], are extended with the CLI values instead of being overwritten
     /// completely.
@@ -433,7 +430,7 @@ impl PackageConfig {
     /// # Arguments
     ///
     /// - `cli` - CLI fields to merge with.
-    pub fn merge_with_cli(&mut self, cli: &BoxUnboxCli) {
+    pub fn merge_with_cli(&mut self, cli: &UnboxCli) {
         self.exclude_pats.extend_from_slice(&cli.exclude_pats);
         self.include_pats.extend_from_slice(&cli.include_pats);
         self.link_root |= cli.link_root;
@@ -621,7 +618,7 @@ mod tests {
     fn test_init() -> anyhow::Result<()> {
         let package = make_tmp_tree().context("failed to make test package")?;
         let package_path = package.path();
-        let mut cli = BoxUnboxCli::new(package_path);
+        let mut cli = UnboxCli::new(package_path);
         // change EVERY value from the default for a comprehensive test
         cli.link_root = true;
         cli.link_type = Some(LinkType::HardLink);

@@ -3,7 +3,7 @@
 use std::path::Path;
 
 use anyhow::Context;
-use boxunbox::cli::{BoxUnboxCli, ColorOverride};
+use boxunbox::cli::{ColorOverride, UnboxCli};
 use boxunbox::error::UnboxError;
 use boxunbox::package::{self, PackageConfig};
 use boxunbox::plan::UnboxPlan;
@@ -15,7 +15,7 @@ use clap::Parser;
 /// # Arguments
 ///
 /// - `package` - Package directory to unbox.
-fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
+fn unbox(package: &Path, cli: &UnboxCli) -> Result<(), UnboxError> {
     let config = match PackageConfig::init(package, cli) {
         Ok(config) => config,
         Err(package::error::ConfigRead::FileNotFound(_)) => {
@@ -62,12 +62,12 @@ fn unbox(package: &Path, cli: &BoxUnboxCli) -> Result<(), UnboxError> {
 }
 
 fn main() -> anyhow::Result<()> {
-    let cli = BoxUnboxCli::parse();
+    let cli = UnboxCli::parse();
 
     #[cfg(debug_assertions)]
     println!("cli={cli:#?}");
 
-    let BoxUnboxCli {
+    let UnboxCli {
         ref packages,
         color_override,
         ..

@@ -68,7 +68,7 @@ pub enum ExistingFileStrategy {
 #[derive(Clone, Debug, Parser)]
 #[command(name = "unbox", about, long_about = None, styles=__cli_styles(), version)]
 #[allow(clippy::struct_excessive_bools)]
-pub struct BoxUnboxCli {
+pub struct UnboxCli {
     /// Package (directory) to unbox. Specify multiple directories to unbox multiple.
     #[arg(required = true, value_parser = cli_parse_pathbuf, value_hint = ValueHint::DirPath)]
     pub packages: Vec<PathBuf>,
@@ -174,7 +174,7 @@ impl Display for ExistingFileStrategy {
 }
 
 #[cfg(test)]
-impl BoxUnboxCli {
+impl UnboxCli {
     pub(crate) fn new<P: Into<PathBuf>>(package: P) -> Self {
         Self {
             packages: vec![package.into()],

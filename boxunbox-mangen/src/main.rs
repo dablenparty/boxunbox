@@ -1,10 +1,10 @@
 use std::{env, fs};
 
-use boxunbox::{cli::BoxUnboxCli, utils::get_cargo_target};
+use boxunbox::{cli::UnboxCli, utils::get_cargo_target};
 use clap::CommandFactory;
 
 fn main() -> anyhow::Result<()> {
-    let cmd = BoxUnboxCli::command();
+    let cmd = UnboxCli::command();
 
     let man = clap_mangen::Man::new(cmd);
     let mut buffer: Vec<u8> = Vec::default();

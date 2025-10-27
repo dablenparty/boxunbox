@@ -1,6 +1,6 @@
 use std::{fs, io::BufWriter};
 
-use boxunbox::{cli::BoxUnboxCli, utils::get_cargo_target};
+use boxunbox::{cli::UnboxCli, utils::get_cargo_target};
 use clap::{CommandFactory, ValueEnum};
 use clap_complete::Shell;
 
@@ -8,7 +8,7 @@ fn main() -> anyhow::Result<()> {
     let cargo_target = get_cargo_target()?;
     let out_dir = cargo_target.join("completions");
     fs::create_dir_all(&out_dir)?;
-    let mut command = BoxUnboxCli::command();
+    let mut command = UnboxCli::command();
 
     for shell in Shell::value_variants() {
         let name = command

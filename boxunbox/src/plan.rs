@@ -8,7 +8,7 @@ use colored::Colorize;
 use pathdiff::diff_paths;
 
 use crate::{
-    cli::{BoxUnboxCli, ExistingFileStrategy},
+    cli::{ExistingFileStrategy, UnboxCli},
     error::{PlanningError, UnboxError},
     package::{LinkType, PackageConfig, error::ConfigRead},
     utils::{os_symlink, replace_home_with_tilde},
@@ -250,7 +250,7 @@ impl UnboxPlan {
     /// - A file NOT from the package is encountered
     pub fn plan_unboxing(
         root_config: PackageConfig,
-        cli: &BoxUnboxCli,
+        cli: &UnboxCli,
     ) -> Result<Self, PlanningError> {
         let mut plan = Self {
             links: Vec::new(),
@@ -1549,7 +1549,7 @@ mod tests {
     fn test_plan_empty_unboxing() -> anyhow::Result<()> {
         let package = tempfile::tempdir().context("failed to make test package")?;
         let package_path = package.path();
-        let cli = BoxUnboxCli::new(package_path);
+        let cli = UnboxCli::new(package_path);
         let config = PackageConfig::new(package_path);
 
         let actual_result = UnboxPlan::plan_unboxing(config, &cli);
@@ -1571,7 +1571,7 @@ mod tests {
     fn test_plan_unboxing() -> anyhow::Result<()> {
         let package = make_tmp_tree().context("failed to make test package")?;
         let package_path = package.path();
-        let cli = BoxUnboxCli::new(package_path);
+        let cli = UnboxCli::new(package_path);
         let config = PackageConfig::init(package_path, &cli)
             .context("failed to create test package config")?;
 
@@ -1619,7 +1619,7 @@ mod tests {
 
         let package = make_tmp_tree().context("failed to make test package")?;
         let package_path = package.path();
-        let cli = BoxUnboxCli::new(package_path);
+        let cli = UnboxCli::new(package_path);
         let config = PackageConfig::init(package_path, &cli)
             .context("failed to create test package config")?;
 
@@ -1700,7 +1700,7 @@ mod tests {
         let package = make_tmp_tree().context("failed to make test package")?;
         let package_path = package.path();
         let test_regex = Regex::new("^nested").expect("test regex should compile");
-        let mut cli = BoxUnboxCli::new(package_path);
+        let mut cli = UnboxCli::new(package_path);
         cli.include_pats.push(test_regex.clone());
         let config = PackageConfig::init(package_path, &cli)
             .context("failed to create test package config")?;
@@ -1761,7 +1761,7 @@ mod tests {
         let test_include_regex =
             Regex::new("^folder1$").expect("test include regex should compile");
         let test_exclude_regex = Regex::new("ignore").expect("test exclude regex should compile");
-        let mut cli = BoxUnboxCli::new(package_path);
+        let mut cli = UnboxCli::new(package_path);
         cli.include_pats.push(test_include_regex.clone());
         cli.exclude_pats.push(test_exclude_regex.clone());
         let config = PackageConfig::init(package_path, &cli)
@@ -1830,7 +1830,7 @@ mod tests {
         let package = make_tmp_tree().context("failed to make test package")?;
         let package_path = package.path();
         let test_regex = Regex::new("^folder1$").expect("test regex should compile");
-        let mut cli = BoxUnboxCli::new(package_path);
+        let mut cli = UnboxCli::new(package_path);
         cli.include_pats.push(test_regex.clone());
         let config = PackageConfig::init(package_path, &cli)
             .context("failed to create test package config")?;
@@ -1889,7 +1889,7 @@ mod tests {
         let package = make_tmp_tree().context("failed to make test package")?;
         let package_path = package.path();
         let test_regex = Regex::new("^folder1$").expect("test regex should compile");
-        let mut cli = BoxUnboxCli::new(package_path);
+        let mut cli = UnboxCli::new(package_path);
         cli.exclude_pats.push(test_regex.clone());
         let config = PackageConfig::init(package_path, &cli)
             .context("failed to create test package config")?;
@@ -1947,7 +1947,7 @@ mod tests {
     fn test_plan_unbox_root() -> anyhow::Result<()> {
         let package = make_tmp_tree().context("failed to make test package")?;
         let package_path = package.path();
-        let mut cli = BoxUnboxCli::new(package_path);
+        let mut cli = UnboxCli::new(package_path);
         // just override with CLI; don't bother re-saving the package config
         cli.link_root = true;
         let config = PackageConfig::init(package_path, &cli)
