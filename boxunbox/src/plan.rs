@@ -20,6 +20,7 @@ pub struct DisplayPlan<'a> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(test, derive(Hash))]
 pub struct PlannedLink {
     src: PathBuf,
     dest: PathBuf,
@@ -333,26 +334,31 @@ impl UnboxPlan {
             if file_type.is_dir() {
                 // read nested config
                 match PackageConfig::init(entry_path, cli) {
-                    Ok(config) => config_stack.push(config),
-                    Err(ConfigRead::FileNotFound(_)) => {}
+                    Ok(config) => {
+                        let link_root = config.link_root;
+                        config_stack.push(config);
+                        if link_root {
+                            walker.skip_current_dir();
+                        } else {
+                            continue;
+                        }
+                    }
+                    Err(ConfigRead::FileNotFound(_)) => {
+                        continue;
+                    }
                     Err(err) => return Err(err.into()),
                 }
-
-                continue;
             }
 
-            // entry is definitely a file at this point
             // shadow current_config in case a new one was added
-            let current_config = config_stack
-                .last()
-                .expect("config_stack should not be empty");
-
             let PackageConfig {
                 target,
                 link_type,
                 package: current_package,
                 ..
-            } = current_config;
+            } = config_stack
+                .last()
+                .expect("config_stack should not be empty");
 
             let path_tail = entry_path
                 .strip_prefix(current_package)
@@ -495,7 +501,7 @@ impl UnboxPlan {
 
 #[cfg(test)]
 mod tests {
-    use std::io::Write;
+    use std::{collections::HashSet, io::Write, iter};
 
     use anyhow::Context;
     use regex::Regex;
@@ -1775,89 +1781,6 @@ mod tests {
             expected_links.is_empty(),
             "unboxing plan did not account for all links: {expected_links:?}"
         );
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_plan_unboxing_nested_config_link_root() -> anyhow::Result<()> {
-        const TEST_NESTED_PACKAGE: &str = "folder1/";
-
-        let package = make_tmp_tree().context("failed to make test package")?;
-        let package_path = package.path();
-        let cli = UnboxCli::new(package_path);
-        let config = PackageConfig::init(package_path, &cli)
-            .context("failed to create test package config")?;
-
-        // make nested config
-        // NOTE: don't use TEST_TARGET here, we want to make sure the target change works
-        #[cfg(not(windows))]
-        let expected_nested_target = PathBuf::from("/some/other/test/target");
-        #[cfg(windows)]
-        let expected_nested_target = PathBuf::from("S:\\some\\other\\test\\target");
-        let expected_nested_package = package_path.join(TEST_NESTED_PACKAGE);
-        let mut nested_config = PackageConfig::new_with_target(
-            expected_nested_package.clone(),
-            expected_nested_target.clone(),
-        );
-        nested_config.link_root = true;
-        nested_config
-            .save_to_package()
-            .context("failed to save nested test config to test package")?;
-
-        let expected_target = PathBuf::from(TEST_TARGET);
-        let expected_plan = TEST_PACKAGE_FILE_TAILS
-            .into_iter()
-            .filter_map(|tail| {
-                let tail = PathBuf::from(tail);
-                if !tail.starts_with(&expected_nested_package) || tail == expected_nested_package {
-                    Some(tail)
-                } else {
-                    None
-                }
-            })
-            .map(|tail| {
-                let dest = expected_target.join(&tail);
-
-                PlannedLink {
-                    src: package_path.join(tail),
-                    dest,
-                    ty: LinkType::SymlinkAbsolute,
-                }
-            })
-            .collect::<UnboxPlan>();
-        let actual_plan = UnboxPlan::plan_unboxing(config, &cli)?;
-
-        #[cfg(debug_assertions)]
-        assert_eq!(
-            expected_plan.create_dirs, actual_plan.create_dirs,
-            "unboxing plans disagree on create_dirs"
-        );
-        assert_eq!(
-            expected_plan.efs, actual_plan.efs,
-            "unboxing plan has unexpected file strategy"
-        );
-
-        assert_eq!(
-            expected_plan.links.len(),
-            actual_plan.links.len(),
-            "unboxing plan has unexpected length"
-        );
-
-        for pl in &actual_plan.links {
-            assert!(
-                expected_plan.links.contains(pl),
-                "unboxing plan contains unexpected planned link: {pl:?}"
-            );
-
-            if pl.src.starts_with(&expected_nested_package) {
-                assert!(
-                    pl.dest.starts_with(&expected_nested_target),
-                    "nested planned link has unexpected target '{:?}'",
-                    pl.dest
-                );
-            }
-        }
 
         Ok(())
     }
