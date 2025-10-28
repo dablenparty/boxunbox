@@ -1,3 +1,26 @@
+## [0.2.4](https://github.com/dablenparty/boxunbox/compare/v0.2.3..v0.2.4) - 2025-10-28
+
+### 🐛 Bug Fixes
+
+- *(plan)* Respect link root in nested configs - ([465079b](https://github.com/dablenparty/boxunbox/commit/465079b0876590d3beec4f62c54d3f284fb65964))
+
+### 🚜 Refactor
+
+- Rename CLI struct - ([e6c00fd](https://github.com/dablenparty/boxunbox/commit/e6c00fd3163c88504422791f32acff900304fc30))
+
+### 🧪 Testing
+
+- *(plan)* Test nested link root config - ([1718279](https://github.com/dablenparty/boxunbox/commit/17182799c28285527d5f09c5ad4c6894d18e9a94))
+
+### ⚙️ Miscellaneous Tasks
+
+- Bump version (v0.2.4) - ([f7c2fbb](https://github.com/dablenparty/boxunbox/commit/f7c2fbb0d3645f8d036df55b4fb077d60edae7c1))
+- PKGBUILD v0.2.3 - ([c102159](https://github.com/dablenparty/boxunbox/commit/c1021598171a6f33cc2640ff2748133b87b23e96))
+
+## New Contributors ❤️
+
+* @dablenparty made their first contribution
+
 ## [0.2.3](https://github.com/dablenparty/boxunbox/compare/v0.2.2..v0.2.3) - 2025-09-15
 
 ### 🐛 Bug Fixes
@@ -24,12 +47,9 @@
 
 ### ⚙️ Miscellaneous Tasks
 
-- Bump version (v0.2.3) - ([e24d59d](https://github.com/dablenparty/boxunbox/commit/e24d59d788798c43c15be4252a623e0dfd6b9b45))
+- Bump version (v0.2.3) - ([69d3df5](https://github.com/dablenparty/boxunbox/commit/69d3df5effca71f9653609fd7fd6e125eecbbf08))
 - PKGBUILD v0.2.2 - ([91f128e](https://github.com/dablenparty/boxunbox/commit/91f128e4cbc481774421ccd7b7d7fb488d90cd89))
 
-## New Contributors ❤️
-
-* @dablenparty made their first contribution
 
 ## [0.2.2](https://github.com/dablenparty/boxunbox/compare/v0.2.1..v0.2.2) - 2025-07-29
 
