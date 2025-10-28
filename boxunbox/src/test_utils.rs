@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use std::fs;
+use std::{fs, path::PathBuf};
 
 use anyhow::Context;
 use tempfile::TempDir;
@@ -40,6 +40,10 @@ pub fn vec_string_compare<S: ToString>(left: &[S], right: &[S]) -> bool {
             .all(|(l, r)| l == r)
 }
 
+pub fn make_tmp_tree() -> anyhow::Result<TempDir> {
+    make_tmp_tree_with_target(TEST_TARGET)
+}
+
 /// Creates a new temporary file tree for use in integration tests. Each call to this function will
 /// create a _new_ temporary directory; however, every directory will have the same structure:
 ///
@@ -54,7 +58,7 @@ pub fn vec_string_compare<S: ToString>(left: &[S], right: &[S]) -> bool {
 /// ├── test.txt
 /// └── test_ignore.txt
 /// ```
-pub fn make_tmp_tree() -> anyhow::Result<TempDir> {
+pub fn make_tmp_tree_with_target<P: Into<PathBuf>>(target: P) -> anyhow::Result<TempDir> {
     let temp_dir = tempfile::tempdir().context("failed to create tempdir")?;
     let root = temp_dir.path();
     for file in &TEST_PACKAGE_FILE_TAILS {
@@ -68,7 +72,7 @@ pub fn make_tmp_tree() -> anyhow::Result<TempDir> {
     }
 
     // create demo config with home dir as target
-    let conf = PackageConfig::new(root);
+    let conf = PackageConfig::new_with_target(root, target);
     conf.save_to_package()
         .context("failed to save test config")?;
 
