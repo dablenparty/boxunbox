@@ -198,19 +198,13 @@ impl PlannedLink {
         }
 
         match ty {
-            LinkType::SymlinkAbsolute => {
-                os_symlink(src, dest)?;
-            }
+            LinkType::SymlinkAbsolute => os_symlink(src, dest),
             LinkType::SymlinkRelative => {
                 let relative_src = self.get_src_relative_to_dest();
-                os_symlink(relative_src, dest)?;
+                os_symlink(relative_src, dest)
             }
-            LinkType::HardLink => {
-                fs::hard_link(src, dest)?;
-            }
+            LinkType::HardLink => fs::hard_link(src, dest),
         }
-
-        Ok(())
     }
 }
 
@@ -506,7 +500,9 @@ mod tests {
     use anyhow::Context;
     use regex::Regex;
 
-    use crate::test_utils::{TEST_PACKAGE_FILE_TAILS, TEST_TARGET, make_tmp_tree};
+    use crate::test_utils::{
+        TEST_PACKAGE_FILE_TAILS, TEST_TARGET, make_tmp_tree, make_tmp_tree_with_target,
+    };
 
     use super::*;
 
@@ -1515,6 +1511,92 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn test_unbox_nested_config_link_root() -> anyhow::Result<()> {
+        const TEST_NESTED_PACKAGE: &str = "folder1";
+
+        let target = tempfile::tempdir().context("failed to create nested test target")?;
+        let expected_target = target.path();
+        let package =
+            make_tmp_tree_with_target(expected_target).context("failed to make test package")?;
+        let package_path = package.path();
+
+        // make nested config
+        // NOTE: don't use TEST_TARGET here, we want to make sure the target change works
+        let expected_nested_target = expected_target.join(TEST_NESTED_PACKAGE);
+        let expected_nested_package = package_path.join(TEST_NESTED_PACKAGE);
+        let mut nested_config = PackageConfig::new_with_target(
+            expected_nested_package.clone(),
+            expected_nested_target.clone(),
+        );
+        nested_config.link_root = true;
+        nested_config
+            .save_to_package()
+            .context("failed to save nested test config to test package")?;
+
+        let expected_plan = TEST_PACKAGE_FILE_TAILS
+            .into_iter()
+            // remove nested package from expected plan
+            .filter(|tail| !tail.starts_with(TEST_NESTED_PACKAGE))
+            .map(|tail| {
+                let dest = expected_target.join(tail);
+
+                PlannedLink {
+                    src: package_path.join(tail),
+                    dest,
+                    ty: LinkType::SymlinkAbsolute,
+                }
+            })
+            // add back nested root folder since it and only it should be there
+            .chain(iter::once(PlannedLink {
+                src: expected_nested_package.clone(),
+                dest: expected_nested_target.clone(),
+                ty: LinkType::SymlinkAbsolute,
+            }))
+            .collect::<UnboxPlan>();
+
+        let links_made = expected_plan.unbox()?;
+
+        let mut expected_links = expected_plan.links.iter().cloned().collect::<HashSet<_>>();
+
+        for pl in &links_made {
+            assert!(
+                expected_links.remove(pl),
+                "unboxing plan contains unexpected planned link: {pl:?}"
+            );
+
+            if pl.src.starts_with(&expected_nested_package) {
+                assert!(
+                    pl.dest.starts_with(&expected_nested_target),
+                    "nested planned link has unexpected target '{:?}'",
+                    pl.dest
+                );
+                assert!(
+                    pl.dest.is_symlink(),
+                    "nested planned link did not create symlink target '{:?}'",
+                    pl.dest
+                );
+                let md = pl
+                    .dest
+                    .metadata()
+                    .with_context(|| format!("failed to get metadata for '{:?}'", pl.dest))?;
+                assert!(
+                    md.is_dir(),
+                    "expected {:?} to point to dir, found file {:?}",
+                    pl.dest,
+                    pl.src,
+                );
+            }
+        }
+
+        assert!(
+            expected_links.is_empty(),
+            "unboxing plan did not account for all links: {expected_links:?}"
+        );
+
+        Ok(())
+    }
+
     #[cfg(not(windows))]
     #[test]
     fn test_make_relative_dest() {
@@ -2035,7 +2117,11 @@ mod tests {
 
     #[test]
     fn test_plan_unbox_root() -> anyhow::Result<()> {
-        let package = make_tmp_tree().context("failed to make test package")?;
+        let target = tempfile::tempdir().context("failed to make test target")?;
+        let expected_target = target.keep();
+        let package =
+            make_tmp_tree_with_target(&expected_target).context("failed to make test package")?;
+        fs::remove_dir(&expected_target).context("failed to remove target dir")?;
         let package_path = package.path();
         let mut cli = UnboxCli::new(package_path);
         // just override with CLI; don't bother re-saving the package config
@@ -2043,7 +2129,6 @@ mod tests {
         let config = PackageConfig::init(package_path, &cli)
             .context("failed to create test package config")?;
 
-        let expected_target = PathBuf::from(TEST_TARGET);
         let expected_plan = [PlannedLink {
             src: package_path.to_path_buf(),
             dest: expected_target.clone(),
@@ -2052,6 +2137,7 @@ mod tests {
         .into_iter()
         .collect::<UnboxPlan>();
         let actual_plan = UnboxPlan::plan_unboxing(config, &cli)?;
+        let made_links = actual_plan.unbox()?;
 
         #[cfg(debug_assertions)]
         assert_eq!(
@@ -2069,7 +2155,20 @@ mod tests {
             "unboxing plan has unexpected length"
         );
 
+        assert_eq!(
+            expected_plan.links.len(),
+            made_links.len(),
+            "unboxing plan has unexpected length"
+        );
+
         for pl in &actual_plan.links {
+            assert!(
+                expected_plan.links.contains(pl),
+                "unboxing plan contains unexpected planned link: {pl:?}"
+            );
+        }
+
+        for pl in &made_links {
             assert!(
                 expected_plan.links.contains(pl),
                 "unboxing plan contains unexpected planned link: {pl:?}"
