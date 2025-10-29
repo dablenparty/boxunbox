@@ -354,13 +354,18 @@ impl UnboxPlan {
                 .last()
                 .expect("config_stack should not be empty");
 
-            let path_tail = entry_path
-                .strip_prefix(current_package)
-                .expect("entry_path should be prefixed by package");
+            let dest = if entry_path == current_package {
+                target.clone()
+            } else {
+                let path_tail = entry_path
+                    .strip_prefix(current_package)
+                    .expect("entry_path should be prefixed by package");
+                target.join(path_tail)
+            };
 
             targets.push(PlannedLink {
                 src: entry_path.to_path_buf(),
-                dest: target.join(path_tail),
+                dest,
                 ty: *link_type,
             });
         }
