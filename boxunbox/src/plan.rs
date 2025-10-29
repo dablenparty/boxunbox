@@ -1538,14 +1538,10 @@ mod tests {
             .into_iter()
             // remove nested package from expected plan
             .filter(|tail| !tail.starts_with(TEST_NESTED_PACKAGE))
-            .map(|tail| {
-                let dest = expected_target.join(tail);
-
-                PlannedLink {
-                    src: package_path.join(tail),
-                    dest,
-                    ty: LinkType::SymlinkAbsolute,
-                }
+            .map(|tail| PlannedLink {
+                src: package_path.join(tail),
+                dest: expected_target.join(tail),
+                ty: LinkType::SymlinkAbsolute,
             })
             // add back nested root folder since it and only it should be there
             .chain(iter::once(PlannedLink {
@@ -1785,20 +1781,20 @@ mod tests {
 
     #[test]
     fn test_plan_unboxing_nested_config_link_root() -> anyhow::Result<()> {
-        const TEST_NESTED_PACKAGE: &str = "folder1/";
+        const TEST_NESTED_PACKAGE: &str = "folder1";
 
-        let package = make_tmp_tree().context("failed to make test package")?;
+        let target = tempfile::tempdir().context("failed to create nested test target")?;
+        let expected_target = target.path();
+        let package =
+            make_tmp_tree_with_target(expected_target).context("failed to make test package")?;
         let package_path = package.path();
         let cli = UnboxCli::new(package_path);
-        let config = PackageConfig::init(package_path, &cli)
-            .context("failed to create test package config")?;
+        let config =
+            PackageConfig::init(package_path, &cli).context("failed to init package config")?;
 
         // make nested config
         // NOTE: don't use TEST_TARGET here, we want to make sure the target change works
-        #[cfg(not(windows))]
-        let expected_nested_target = PathBuf::from("/some/other/test/target");
-        #[cfg(windows)]
-        let expected_nested_target = PathBuf::from("S:\\some\\other\\test\\target");
+        let expected_nested_target = expected_target.join(TEST_NESTED_PACKAGE);
         let expected_nested_package = package_path.join(TEST_NESTED_PACKAGE);
         let mut nested_config = PackageConfig::new_with_target(
             expected_nested_package.clone(),
@@ -1809,7 +1805,6 @@ mod tests {
             .save_to_package()
             .context("failed to save nested test config to test package")?;
 
-        let expected_target = PathBuf::from(TEST_TARGET);
         let expected_plan = TEST_PACKAGE_FILE_TAILS
             .into_iter()
             // remove nested package from expected plan
