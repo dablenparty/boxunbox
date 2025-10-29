@@ -772,9 +772,10 @@ mod tests {
             .save_to_disk(old_config_path)
             .context("failed to save test old config")?;
 
-        let actual_old_config = OldPackageConfig::try_from(package_path.to_path_buf())?;
         let expected_config = PackageConfig::new_with_target(package_path, target_path);
-        let actual_config = PackageConfig::from_old_package(package_path, actual_old_config);
+        let cli = UnboxCli::new(package_path);
+        let actual_config = PackageConfig::init(package_path, &cli)
+            .context("failed to initialize config from old config file")?;
 
         assert_eq!(expected_config, actual_config);
 
