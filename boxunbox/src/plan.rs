@@ -468,10 +468,17 @@ impl UnboxPlan {
                             "warn".yellow(),
                             replace_home_with_tilde(dest)
                         );
-                        fs::remove_file(dest).map_err(|err| UnboxError::Io {
-                            pl: pl.clone(),
-                            source: err,
-                        })?;
+                        if dest.is_dir() {
+                            fs::remove_dir_all(dest).map_err(|err| UnboxError::Io {
+                                pl: pl.clone(),
+                                source: err,
+                            })?;
+                        } else {
+                            fs::remove_file(dest).map_err(|err| UnboxError::Io {
+                                pl: pl.clone(),
+                                source: err,
+                            })?;
+                        }
                     }
                     ExistingFileStrategy::ThrowError => {
                         return Err(UnboxError::TargetAlreadyExists(pl.clone()));
