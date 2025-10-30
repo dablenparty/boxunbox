@@ -1033,7 +1033,7 @@ mod tests {
                 .write_all(EXISTING_TARGET_FILE_CONTENTS.as_bytes())?;
         }
 
-        let mut expected_plan = TEST_PACKAGE_FILE_TAILS
+        let expected_plan = TEST_PACKAGE_FILE_TAILS
             .iter()
             .map(|tail| PlannedLink {
                 src: package_path.join(tail),
@@ -1042,9 +1042,18 @@ mod tests {
             })
             .filter(|pl| *pl != expected_pl)
             .collect::<UnboxPlan>();
-        expected_plan.efs = ExistingFileStrategy::Ignore;
 
-        let unboxed_links = expected_plan
+        let mut actual_plan = TEST_PACKAGE_FILE_TAILS
+            .iter()
+            .map(|tail| PlannedLink {
+                src: package_path.join(tail),
+                dest: expected_target.join(tail),
+                ty: LinkType::SymlinkAbsolute,
+            })
+            .collect::<UnboxPlan>();
+        actual_plan.efs = ExistingFileStrategy::Ignore;
+
+        let unboxed_links = actual_plan
             .unbox()
             .context("failed to unbox test package")?;
         assert_eq!(
@@ -1070,7 +1079,16 @@ mod tests {
             "existing target file has unexpected file contents '{dest_contents:?}'"
         );
 
+        assert!(
+            expected_pl.dest.is_file(),
+            "ignored file got replaced: {expected_pl:?}"
+        );
+
+        let mut unboxed_set = unboxed_links.iter().cloned().collect::<HashSet<_>>();
+
         for link in expected_plan.links {
+            assert!(unboxed_set.remove(&link), "failed to unbox link: {link:?}");
+
             let PlannedLink { src, dest, .. } = link;
 
             assert!(
@@ -1089,6 +1107,10 @@ mod tests {
                 actual_link_target.display(),
                 src.display()
             );
+        }
+
+        if !unboxed_set.is_empty() {
+            anyhow::bail!("unboxed unexpected links: {unboxed_set:?}");
         }
 
         Ok(())
