@@ -377,6 +377,92 @@ impl UnboxPlan {
         }
     }
 
+    /// Handles a circular reference for a [`PlannedLink`]. This happens when the parent dir of
+    /// [`PlannedLink::dest`] is a symlink pointing back into the package.
+    ///
+    /// Behavior relies on [`UnboxPlan::efs`]:
+    /// - [`ExistingFileStrategy::Move`]: rename the problem link to ``problem_link.bak`` and create
+    ///   a directory in its place.
+    /// - [`ExistingFileStrategy::Overwrite`]: overwrite the problem link with a directory of the
+    ///   same name.
+    /// - Anything else: exit with error.
+    ///
+    /// # Arguments
+    /// - `problem_link`: Problematic symbolic link in dest dir that points into src package.
+    /// - `pl`: The associated [`PlannedLink`]. God's honest truth, this is only used for error
+    ///   reporting.
+    ///
+    /// # Errors
+    ///
+    /// An error is returned if [`UnboxPlan::efs`] is not either [`ExistingFileStrategy::Move`] or
+    /// [`ExistingFileStrategy::Overwrite`], if the `problem_link` cannot be renamed/removed, or if
+    /// the new dir cannot be created.
+    fn handle_circular_reference<P: AsRef<Path>>(
+        &self,
+        problem_link: P,
+        pl: &PlannedLink,
+    ) -> Result<(), UnboxError> {
+        let problem_link = problem_link.as_ref();
+
+        match self.efs {
+            ExistingFileStrategy::Move => {
+                let dest_parent_name = problem_link
+                    .file_name()
+                    .expect("dest_parent should have a name!")
+                    .to_string_lossy();
+                let dest_parent_new_name =
+                    problem_link.with_file_name(format!("{dest_parent_name}.bak"));
+                fs::rename(problem_link, &dest_parent_new_name).map_err(|err| UnboxError::Io {
+                    pl: pl.clone(),
+                    source: err,
+                })?;
+                eprintln!(
+                    "{}: circular reference renamed: {} -> {}",
+                    "warn".yellow(),
+                    replace_home_with_tilde(problem_link),
+                    replace_home_with_tilde(dest_parent_new_name)
+                );
+            }
+
+            ExistingFileStrategy::Overwrite => {
+                fs::remove_file(problem_link).map_err(|err| UnboxError::Io {
+                    pl: pl.clone(),
+                    source: err,
+                })?;
+                eprintln!(
+                    "{}: circular reference removed: {}",
+                    "warn".yellow(),
+                    replace_home_with_tilde(problem_link)
+                );
+            }
+
+            _ => {
+                eprintln!(
+                    "{}: circular references cannot be handled by '{}' strategy",
+                    "error".bright_red(),
+                    self.efs
+                );
+                return Err(UnboxError::CircularReference {
+                    problem_link: problem_link.to_path_buf(),
+                    pl: pl.clone(),
+                });
+            }
+        }
+
+        fs::create_dir_all(problem_link).map_err(|err| UnboxError::Io {
+            pl: pl.clone(),
+            source: err,
+        })?;
+
+        // quick n dirty
+        debug_assert!(
+            problem_link.is_dir(),
+            "failed to replace {} with a directory",
+            problem_link.display()
+        );
+        Ok(())
+    }
+
     /// Unbox the package according to this [`UnboxPlan`], handling any existing target files along
     /// the way and returning a [`Vec`] of successfully unboxed [`PlannedLink`]s.
     ///
@@ -397,6 +483,23 @@ impl UnboxPlan {
         let mut unboxed_links = Vec::with_capacity(self.links.capacity());
         for pl in &self.links {
             let PlannedLink { src, dest, .. } = &pl;
+
+            // if dest is root '/', it will not have a parent, so return itself
+            let dest_parent = dest.parent().unwrap_or(dest);
+            // If the dest parent is a symlink that points to the current package, that's a
+            // circular reference and must be handled or else src files will be overwritten!
+            // We shouldn't have to check the entire parent tree since the planned links should be
+            // sorted in depth order, dirs first, so any parents of the parent should already be
+            // handled.
+            if dest_parent.is_symlink()
+                && fs::read_link(dest_parent).map_err(|err| UnboxError::Io {
+                    pl: pl.clone(),
+                    source: err,
+                })? == *src.parent().unwrap_or(src)
+            {
+                self.handle_circular_reference(dest_parent, pl)?;
+            }
+
             // using `try_exists` follows symlinks; therefore, if a link is invalid (i.e. the link
             // exists but the file it points to doesn't), `try_exists` returns false even though the
             // link exists. `symlink_metadata` reads metadata without following symlinks.
@@ -469,11 +572,17 @@ impl UnboxPlan {
                             replace_home_with_tilde(dest)
                         );
                         if dest.is_dir() {
+                            eprintln!(
+                                "{}: {} is a dir and will be replaced by a symlink, deleting all contents!",
+                                "warn".yellow(),
+                                replace_home_with_tilde(dest)
+                            );
                             fs::remove_dir_all(dest).map_err(|err| UnboxError::Io {
                                 pl: pl.clone(),
                                 source: err,
                             })?;
                         } else {
+                            // regular files and links
                             fs::remove_file(dest).map_err(|err| UnboxError::Io {
                                 pl: pl.clone(),
                                 source: err,

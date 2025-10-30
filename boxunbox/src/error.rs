@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use thiserror::Error as ThisError;
 
 use crate::{
@@ -22,6 +24,13 @@ pub enum PlanningError {
 pub enum UnboxError {
     #[error("cannot adopt symlink {0:?}")]
     AdoptSymlink(PlannedLink),
+    #[error(
+        "circular reference detected! {problem_link:?} is a symlink pointing to the src parent of {pl:?}"
+    )]
+    CircularReference {
+        problem_link: PathBuf,
+        pl: PlannedLink,
+    },
     #[error("failed to parse package config")]
     ConfigParse(#[from] ConfigRead),
     #[warn(deprecated_in_future)]
