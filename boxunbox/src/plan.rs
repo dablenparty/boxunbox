@@ -1196,6 +1196,219 @@ mod tests {
     }
 
     #[test]
+    fn test_unbox_efs_move_dir_with_link() -> anyhow::Result<()> {
+        const TEST_NESTED_PACKAGE: &str = "folder1";
+
+        let target = tempfile::tempdir().context("failed to create temp target")?;
+        let target_path = target.path();
+        let expected_target = PathBuf::from(target_path);
+
+        let package =
+            make_tmp_tree_with_target(&expected_target).context("failed to make test package")?;
+        let package_path = package.path();
+
+        let expected_pl = PlannedLink {
+            src: package_path.join(TEST_NESTED_PACKAGE),
+            dest: expected_target.join(TEST_NESTED_PACKAGE),
+            ty: LinkType::SymlinkAbsolute,
+        };
+        fs::create_dir_all(&expected_pl.dest).context("failed to create test target nested dir")?;
+        assert!(
+            expected_pl
+                .dest
+                .symlink_metadata()
+                .is_ok_and(|m| m.is_dir()),
+            "expected target dir is not a dir: {:?}",
+            expected_pl.dest
+        );
+
+        let mut nested_config = PackageConfig::new_with_target(&expected_pl.src, &expected_pl.dest);
+        nested_config.link_root = true;
+        nested_config
+            .save_to_package()
+            .context("failed to save nested test config")?;
+
+        let mut expected_plan = TEST_PACKAGE_FILE_TAILS
+            .into_iter()
+            // remove nested package from expected plan
+            .filter(|tail| !tail.starts_with(TEST_NESTED_PACKAGE))
+            .map(|tail| PlannedLink {
+                src: package_path.join(tail),
+                dest: expected_target.join(tail),
+                ty: LinkType::SymlinkAbsolute,
+            })
+            // add back nested root folder since it and only it should be there
+            .chain(iter::once(expected_pl.clone()))
+            .collect::<UnboxPlan>();
+
+        expected_plan.efs = ExistingFileStrategy::Move;
+
+        let unboxed_links = expected_plan
+            .unbox()
+            .context("failed to unbox test package")?;
+
+        let mut unboxed_set = unboxed_links.iter().cloned().collect::<HashSet<_>>();
+
+        for link in expected_plan.links {
+            assert!(unboxed_set.remove(&link), "failed to unbox link: {link:?}");
+            if link == expected_pl {
+                assert!(
+                    link.dest.symlink_metadata().is_ok_and(|m| m.is_symlink()),
+                    "expected target dir is not a symlink: {:?}",
+                    link.dest
+                );
+                // extract where the link points to
+                let link_tail = fs::read_link(&link.dest)
+                    .with_context(|| format!("failed to follow symlink: {:?}", link.dest))?;
+                assert_eq!(
+                    link_tail, link.src,
+                    "{:?} doesn't point to {:?}, but to: {:?}",
+                    link.dest, link.src, link_tail
+                );
+
+                let moved_dest_file_name = link
+                    .dest
+                    .file_name()
+                    .expect("test dest path should have a file name")
+                    .to_string_lossy();
+                let moved_dest = link
+                    .dest
+                    .with_file_name(format!("{moved_dest_file_name}.bak"));
+                // is_dir checks existence too
+                assert!(
+                    moved_dest.is_dir(),
+                    "unboxing failed to create moved target dir {}",
+                    moved_dest.display()
+                );
+            }
+
+            let PlannedLink { src, dest, .. } = link;
+
+            assert!(
+                dest.try_exists()
+                    .with_context(|| format!("failed to verify existence of {}", dest.display()))?,
+                "{} exists",
+                dest.display()
+            );
+            assert!(dest.is_symlink(), "expected symlink at {}", dest.display());
+            let actual_link_target = fs::read_link(&dest)
+                .with_context(|| format!("failed to read link info for {}", dest.display()))?;
+            assert_eq!(
+                src,
+                actual_link_target,
+                "{} does not point to {}",
+                actual_link_target.display(),
+                src.display()
+            );
+        }
+
+        if !unboxed_set.is_empty() {
+            anyhow::bail!("unboxed unexpected links: {unboxed_set:?}");
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_unbox_efs_overwrite_dir_with_link() -> anyhow::Result<()> {
+        const TEST_NESTED_PACKAGE: &str = "folder1";
+
+        let target = tempfile::tempdir().context("failed to create temp target")?;
+        let target_path = target.path();
+        let expected_target = PathBuf::from(target_path);
+
+        let package =
+            make_tmp_tree_with_target(&expected_target).context("failed to make test package")?;
+        let package_path = package.path();
+
+        let expected_pl = PlannedLink {
+            src: package_path.join(TEST_NESTED_PACKAGE),
+            dest: expected_target.join(TEST_NESTED_PACKAGE),
+            ty: LinkType::SymlinkAbsolute,
+        };
+        fs::create_dir_all(&expected_pl.dest).context("failed to create test target nested dir")?;
+        assert!(
+            expected_pl
+                .dest
+                .symlink_metadata()
+                .is_ok_and(|m| m.is_dir()),
+            "expected target dir is not a dir: {:?}",
+            expected_pl.dest
+        );
+
+        let mut nested_config = PackageConfig::new_with_target(&expected_pl.src, &expected_pl.dest);
+        nested_config.link_root = true;
+        nested_config
+            .save_to_package()
+            .context("failed to save nested test config")?;
+
+        let mut expected_plan = TEST_PACKAGE_FILE_TAILS
+            .into_iter()
+            // remove nested package from expected plan
+            .filter(|tail| !tail.starts_with(TEST_NESTED_PACKAGE))
+            .map(|tail| PlannedLink {
+                src: package_path.join(tail),
+                dest: expected_target.join(tail),
+                ty: LinkType::SymlinkAbsolute,
+            })
+            // add back nested root folder since it and only it should be there
+            .chain(iter::once(expected_pl.clone()))
+            .collect::<UnboxPlan>();
+
+        expected_plan.efs = ExistingFileStrategy::Overwrite;
+
+        let unboxed_links = expected_plan
+            .unbox()
+            .context("failed to unbox test package")?;
+
+        let mut unboxed_set = unboxed_links.iter().cloned().collect::<HashSet<_>>();
+
+        for link in expected_plan.links {
+            assert!(unboxed_set.remove(&link), "failed to unbox link: {link:?}");
+            if link == expected_pl {
+                assert!(
+                    link.dest.symlink_metadata().is_ok_and(|m| m.is_symlink()),
+                    "expected target dir is not a symlink: {:?}",
+                    link.dest
+                );
+                // extract where the link points to
+                let link_tail = fs::read_link(&link.dest)
+                    .with_context(|| format!("failed to follow symlink: {:?}", link.dest))?;
+                assert_eq!(
+                    link_tail, link.src,
+                    "{:?} doesn't point to {:?}, but to: {:?}",
+                    link.dest, link.src, link_tail
+                );
+            }
+
+            let PlannedLink { src, dest, .. } = link;
+
+            assert!(
+                dest.try_exists()
+                    .with_context(|| format!("failed to verify existence of {}", dest.display()))?,
+                "{} exists",
+                dest.display()
+            );
+            assert!(dest.is_symlink(), "expected symlink at {}", dest.display());
+            let actual_link_target = fs::read_link(&dest)
+                .with_context(|| format!("failed to read link info for {}", dest.display()))?;
+            assert_eq!(
+                src,
+                actual_link_target,
+                "{} does not point to {}",
+                actual_link_target.display(),
+                src.display()
+            );
+        }
+
+        if !unboxed_set.is_empty() {
+            anyhow::bail!("unboxed unexpected links: {unboxed_set:?}");
+        }
+
+        Ok(())
+    }
+
+    #[test]
     fn test_unbox_efs_overwrite_file() -> anyhow::Result<()> {
         const EXISTING_TARGET_FILE_CONTENTS: &str = "i already exist";
 
