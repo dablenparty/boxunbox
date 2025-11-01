@@ -1546,6 +1546,107 @@ mod tests {
     }
 
     #[test]
+    fn test_unbox_efs_move_nested_dir_link_with_real_dir() -> anyhow::Result<()> {
+        const TEST_NESTED_PACKAGE: &str = "folder1";
+
+        let target = tempfile::tempdir().context("failed to create temp target")?;
+        let target_path = target.path();
+
+        let package =
+            make_tmp_tree_with_target(target_path).context("failed to make test package")?;
+        let package_path = package.path();
+
+        let expected_nested_package = package_path.join(TEST_NESTED_PACKAGE);
+        let expected_nested_target = target_path.join(TEST_NESTED_PACKAGE);
+
+        os_symlink(&expected_nested_package, &expected_nested_target)
+            .context("failed to create test nested symlink")?;
+
+        let mut expected_plan = TEST_PACKAGE_FILE_TAILS
+            .into_iter()
+            .map(|tail| PlannedLink {
+                src: package_path.join(tail),
+                dest: target_path.join(tail),
+                ty: LinkType::SymlinkAbsolute,
+            })
+            .collect::<UnboxPlan>();
+        expected_plan.efs = ExistingFileStrategy::Move;
+
+        let unboxed_links = expected_plan
+            .unbox()
+            .context("failed to unbox test package")?;
+
+        assert!(
+            !expected_nested_target.is_symlink() && expected_nested_target.is_dir(),
+            "{expected_nested_target:?} is not a dir"
+        );
+
+        let backup_dir = expected_nested_target.with_file_name(format!(
+            "{}.bak0",
+            expected_nested_target
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+        ));
+        assert!(
+            backup_dir.is_symlink() && backup_dir.is_dir(),
+            "{backup_dir:?} is not a symlinked dir"
+        );
+
+        let mut unboxed_set = unboxed_links.iter().cloned().collect::<HashSet<_>>();
+
+        for link in expected_plan.links {
+            assert!(unboxed_set.remove(&link), "failed to unbox link: {link:?}");
+            if link.src.starts_with(&expected_nested_package) {
+                assert!(link.src.is_file(), "source files were modified!: {link:?}");
+                assert_eq!(
+                    fs::read_to_string(&link.src).context("failed to read source file!")?,
+                    link.src.to_string_lossy(),
+                    "source file was modified!: {link:?}"
+                );
+                assert!(
+                    link.dest.is_symlink(),
+                    "expected target dir is not a symlink: {:?}",
+                    link.dest
+                );
+                // extract where the link points to
+                let link_tail = fs::read_link(&link.dest)
+                    .with_context(|| format!("failed to follow symlink: {:?}", link.dest))?;
+                assert_eq!(
+                    link_tail, link.src,
+                    "{:?} doesn't point to {:?}, but to: {:?}",
+                    link.dest, link.src, link_tail
+                );
+            }
+
+            let PlannedLink { src, dest, .. } = link;
+
+            assert!(
+                dest.try_exists()
+                    .with_context(|| format!("failed to verify existence of {}", dest.display()))?,
+                "{} exists",
+                dest.display()
+            );
+            assert!(dest.is_symlink(), "expected symlink at {}", dest.display());
+            let actual_link_target = fs::read_link(&dest)
+                .with_context(|| format!("failed to read link info for {}", dest.display()))?;
+            assert_eq!(
+                src,
+                actual_link_target,
+                "{} does not point to {}",
+                actual_link_target.display(),
+                src.display()
+            );
+        }
+
+        if !unboxed_set.is_empty() {
+            anyhow::bail!("unboxed unexpected links: {unboxed_set:?}");
+        }
+
+        Ok(())
+    }
+
+    #[test]
     fn test_unbox_efs_overwrite_nested_dir_link_with_real_dir() -> anyhow::Result<()> {
         const TEST_NESTED_PACKAGE: &str = "folder1";
 
@@ -2044,6 +2145,50 @@ mod tests {
                 "{} exists",
                 dest.display()
             );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_unbox_efs_throw_circular_reference_error() -> anyhow::Result<()> {
+        const TEST_NESTED_PACKAGE: &str = "folder1";
+
+        let target = tempfile::tempdir().context("failed to create temp target")?;
+        let target_path = target.path();
+
+        let package =
+            make_tmp_tree_with_target(target_path).context("failed to make test package")?;
+        let package_path = package.path();
+
+        let expected_nested_package = package_path.join(TEST_NESTED_PACKAGE);
+        let expected_nested_target = target_path.join(TEST_NESTED_PACKAGE);
+
+        os_symlink(&expected_nested_package, &expected_nested_target)
+            .context("failed to create test nested symlink")?;
+
+        let mut expected_plan = TEST_PACKAGE_FILE_TAILS
+            .into_iter()
+            .map(|tail| PlannedLink {
+                src: package_path.join(tail),
+                dest: target_path.join(tail),
+                ty: LinkType::SymlinkAbsolute,
+            })
+            .collect::<UnboxPlan>();
+
+        let bad_efss = [
+            ExistingFileStrategy::Adopt,
+            ExistingFileStrategy::Ignore,
+            ExistingFileStrategy::ThrowError,
+        ];
+
+        for efs in bad_efss {
+            expected_plan.efs = efs;
+            match expected_plan.unbox() {
+                Ok(links) => panic!("unboxing succeeded unexpectedly with links: {links:?}"),
+                Err(UnboxError::CircularReference { .. }) => {}
+                Err(err) => anyhow::bail!("unboxing failed with unexpected error: {err:?}"),
+            }
         }
 
         Ok(())
