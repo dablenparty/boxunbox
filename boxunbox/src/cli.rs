@@ -55,7 +55,8 @@ pub enum ExistingFileStrategy {
     Adopt,
     /// Ignore the link and continue.
     Ignore,
-    /// Move the target file to `<target>.bak` and create a symlink at the original target.
+    /// Move the target file to `<target>.bak0` (or `<target>.bak1`, etc.) and create a symlink at
+    /// the original target.
     Move,
     /// Overwrite the target file with the package file. (destructive!)
     Overwrite,

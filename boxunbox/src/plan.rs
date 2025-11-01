@@ -11,7 +11,7 @@ use crate::{
     cli::{ExistingFileStrategy, UnboxCli},
     error::{PlanningError, UnboxError},
     package::{LinkType, PackageConfig, error::ConfigRead},
-    utils::{os_symlink, replace_home_with_tilde},
+    utils::{generate_backup_file_name, os_symlink, replace_home_with_tilde},
 };
 
 pub struct DisplayPlan<'a> {
@@ -122,7 +122,7 @@ impl Display for DisplayPlan<'_> {
         let efs_verb = match efs {
             ExistingFileStrategy::Adopt => "be adopted".green(),
             ExistingFileStrategy::Ignore => "be ignored".cyan(),
-            ExistingFileStrategy::Move => "be moved to <target_file>.bak".yellow(),
+            ExistingFileStrategy::Move => "be moved to <target_file>.bak#".yellow(),
             ExistingFileStrategy::Overwrite => "be overwritten".bright_red(),
             ExistingFileStrategy::ThrowError => "throw an error".bright_red(),
         };
@@ -406,12 +406,7 @@ impl UnboxPlan {
 
         match self.efs {
             ExistingFileStrategy::Move => {
-                let dest_parent_name = problem_link
-                    .file_name()
-                    .expect("dest_parent should have a name!")
-                    .to_string_lossy();
-                let dest_parent_new_name =
-                    problem_link.with_file_name(format!("{dest_parent_name}.bak"));
+                let dest_parent_new_name = generate_backup_file_name(problem_link);
                 fs::rename(problem_link, &dest_parent_new_name).map_err(|err| UnboxError::Io {
                     pl: pl.clone(),
                     source: err,
@@ -549,11 +544,7 @@ impl UnboxPlan {
                         continue;
                     }
                     ExistingFileStrategy::Move => {
-                        let file_name = dest
-                            .file_name()
-                            .expect("dest should be an absolute path to a file")
-                            .to_string_lossy();
-                        let new_dest = dest.with_file_name(format!("{file_name}.bak"));
+                        let new_dest = generate_backup_file_name(dest);
                         eprintln!(
                             "{}: dest exists, moving {} -> {}",
                             "warn".yellow(),

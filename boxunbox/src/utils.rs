@@ -61,6 +61,33 @@ pub fn get_cargo_target() -> anyhow::Result<PathBuf> {
         .join(CARGO_PROFILE))
 }
 
+/// Generate a numbered backup file name from a given file path.
+///
+/// # Arguments
+///
+/// - `p`: File path. It is expected to have a file path.
+///
+/// # Panics
+///
+/// This will panic if `p` doesn't have a file name (see [`PathBuf::file_name`]).
+pub fn generate_backup_file_name<P: Into<PathBuf>>(p: P) -> PathBuf {
+    let p: PathBuf = p.into();
+    let file_name = p
+        .file_name()
+        .expect("can't get filename to generate backups from")
+        .to_string_lossy();
+    let max = usize::MAX;
+    for i in 0..max {
+        let current_path = p.with_file_name(format!("{file_name}.bak{i}"));
+        // if there's an error checking this path, I don't care, just move on
+        if !current_path.try_exists().unwrap_or(true) {
+            return current_path;
+        }
+    }
+
+    panic!("why do you have {max} versions!?");
+}
+
 /// If the [`Path`] reference begins with the users home directory, it is replaced with a `~`. This
 /// is kinda the opposite of [`expand_into_pathbuf`] and meant for printing.
 ///
