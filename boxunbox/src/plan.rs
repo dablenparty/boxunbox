@@ -1289,7 +1289,7 @@ mod tests {
                     .to_string_lossy();
                 let moved_dest = link
                     .dest
-                    .with_file_name(format!("{moved_dest_file_name}.bak"));
+                    .with_file_name(format!("{moved_dest_file_name}.bak0"));
                 assert!(
                     moved_dest.try_exists().with_context(|| format!(
                         "failed to verify existence of moved target file {}",
@@ -1330,6 +1330,104 @@ mod tests {
             );
         }
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_unbox_efs_move_same_link_ten_times() -> anyhow::Result<()> {
+        let target = tempfile::tempdir().context("failed to create temp target")?;
+        let target_path = target.path();
+        let expected_target = PathBuf::from(target_path);
+
+        let package =
+            make_tmp_tree_with_target(&expected_target).context("failed to make test package")?;
+        let package_path = package.path();
+
+        let test_file_tail = TEST_PACKAGE_FILE_TAILS[0];
+        let expected_pl = PlannedLink {
+            src: package_path.join(test_file_tail),
+            dest: expected_target.join(test_file_tail),
+            ty: LinkType::SymlinkAbsolute,
+        };
+        // create the file in it's own scope to close file descriptor asap
+        {
+            let parent = expected_pl.dest.parent().with_context(|| {
+                format!("failed to get parent of {}", expected_pl.dest.display())
+            })?;
+            fs::create_dir_all(parent).context("failed to create test target parent")?;
+            // test files just contain their own path so this extra file should too to make the
+            // test cleaner later
+            fs::File::create_new(&expected_pl.dest)
+                .context("failed to create test target file")?
+                .write_all(expected_pl.src.as_os_str().as_encoded_bytes())?;
+        }
+        let mut expected_plan = TEST_PACKAGE_FILE_TAILS
+            .iter()
+            .map(|tail| PlannedLink {
+                src: package_path.join(tail),
+                dest: expected_target.join(tail),
+                ty: LinkType::SymlinkAbsolute,
+            })
+            .collect::<UnboxPlan>();
+        expected_plan.efs = ExistingFileStrategy::Move;
+
+        // let mut all_unboxed_links = Vec::with_capacity(expected_plan.links.capacity() * 10);
+        for i in 0..10 {
+            let unboxed_links = expected_plan
+                .unbox()
+                .context("failed to unbox test package")?;
+            assert_eq!(
+                unboxed_links,
+                expected_plan.links,
+                "expected {:?} links, unboxed {:?} links",
+                expected_plan.links.len(),
+                unboxed_links.len()
+            );
+
+            for link in unboxed_links {
+                if link == expected_pl {
+                    let moved_dest_file_name = link
+                        .dest
+                        .file_name()
+                        .expect("test dest path should have a file name")
+                        .to_string_lossy();
+                    let moved_dest = link
+                        .dest
+                        .with_file_name(format!("{moved_dest_file_name}.bak{i}"));
+                    let moved_dest_contents = fs::read_to_string(&moved_dest)
+                        .context("failed to read existing target file")?;
+                    assert_eq!(
+                        link.src.to_string_lossy(),
+                        moved_dest_contents,
+                        "moved target file {moved_dest:?} has unexpected file contents '{moved_dest_contents:?}'"
+                    );
+
+                    // NOTE: most other tests have a `continue` here; this test does not because the
+                    // `dest` link still needs to be checked normally.
+                }
+
+                let PlannedLink { src, dest, .. } = link;
+
+                assert!(
+                    dest.try_exists().with_context(|| format!(
+                        "failed to verify existence of {}",
+                        dest.display()
+                    ))?,
+                    "{} exists",
+                    dest.display()
+                );
+                assert!(dest.is_symlink(), "expected symlink at {}", dest.display());
+                let actual_link_target = fs::read_link(&dest)
+                    .with_context(|| format!("failed to read link info for {}", dest.display()))?;
+                assert_eq!(
+                    src,
+                    actual_link_target,
+                    "{} does not point to {}",
+                    actual_link_target.display(),
+                    src.display()
+                );
+            }
+        }
         Ok(())
     }
 
@@ -1411,7 +1509,7 @@ mod tests {
                     .to_string_lossy();
                 let moved_dest = link
                     .dest
-                    .with_file_name(format!("{moved_dest_file_name}.bak"));
+                    .with_file_name(format!("{moved_dest_file_name}.bak0"));
                 // is_dir checks existence too
                 assert!(
                     moved_dest.is_dir(),
