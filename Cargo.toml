@@ -5,7 +5,7 @@ exclude = ["aur/*", "demo/*", "*.sh"]
 
 [workspace.dependencies]
 anyhow = "1.0.98"
-boxunbox = { path = "boxunbox", version = "*" }
+boxunbox = { path = "boxunbox" }
 clap = { version = "4.5.40", features = ["derive", "cargo", "unicode"] }
 
 [profile.dev]
