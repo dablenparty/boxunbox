@@ -6,6 +6,16 @@ set -eo pipefail
 # Simply change the version string in Cargo.toml, but DO NOT COMMIT THE CHANGE!
 # Just run this script in the dirty repo, it'll commit everything for you.
 
+if ! command -v git cliff >/dev/null 2>&1; then
+  echo 'git cliff not found! Please install git-cliff'
+  exit 3
+fi
+
+if ! command -v typos >/dev/null 2>&1; then
+  echo 'typos not found! Please install typos'
+  exit 3
+fi
+
 if [[ "$OSTYPE" =~ ^darwin.* ]]; then
   # alias macOS sed to GNU sed for simplicity
   sed() {
