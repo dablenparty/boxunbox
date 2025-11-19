@@ -1,3 +1,37 @@
+## [0.2.6](https://github.com/dablenparty/boxunbox/compare/v0.2.5..v0.2.6) - 2025-11-19
+
+### ⛰️  Features
+
+- [**breaking**] Numbered backup files - ([7588937](https://github.com/dablenparty/boxunbox/commit/7588937ed03315172a01a728e14e9c7bb0bab4a8))
+
+### 🐛 Bug Fixes
+
+- *(plan)* Stop overwriting source files - ([6d1ca88](https://github.com/dablenparty/boxunbox/commit/6d1ca8807af7410bad52e2514cd97e53fea1412f))
+- *(plan)* Allow overwriting directories - ([8466deb](https://github.com/dablenparty/boxunbox/commit/8466deb524bac218e5b0fbd291a483f6394da690))
+
+### 🧪 Testing
+
+- *(plan)* More circular reference tests - ([fd4b0cb](https://github.com/dablenparty/boxunbox/commit/fd4b0cb35ee614bb3ca547f3df1cf5c7e035f40a))
+- *(plan)* Test new backup naming scheme - ([e316db0](https://github.com/dablenparty/boxunbox/commit/e316db05587853064c562696642d1cd03292dff3))
+- *(plan)* Test overwriting symlinked dir - ([4624abb](https://github.com/dablenparty/boxunbox/commit/4624abb200745e964af694add7246f4148e6ffbc))
+- *(plan)* Actually test EFS::Ignore - ([92d336b](https://github.com/dablenparty/boxunbox/commit/92d336bd63aea1dca9146287e602c3b99416590f))
+- *(plan)* Test overwrite dir with symlink - ([274a52f](https://github.com/dablenparty/boxunbox/commit/274a52f4b22609b985aa48ef8c5cb7adc0eba827))
+
+### ⚙️ Miscellaneous Tasks
+
+- *(tag_release)* Check for required commands - ([d0bd007](https://github.com/dablenparty/boxunbox/commit/d0bd007e519cf6a9362e9a709466ce770c64a27a))
+- Bump version (v0.2.6) - ([6fd8aaa](https://github.com/dablenparty/boxunbox/commit/6fd8aaabfa8d951799a1323c93094b7de0a2d860))
+- PKGBUILD v0.2.5 - ([7e59991](https://github.com/dablenparty/boxunbox/commit/7e59991572e0e212a45886c8729cea3f194acdbd))
+
+### Build
+
+- *(Cargo.toml)* Remove version specifier - ([32ab434](https://github.com/dablenparty/boxunbox/commit/32ab43421d4255b3653fb3b8d47d3d45229467db))
+- *(boxunbox-git)* [**breaking**] Bump submodule commit - ([7cbb52e](https://github.com/dablenparty/boxunbox/commit/7cbb52e5dc606d1451a832069351fcaa1cb79178))
+
+## New Contributors ❤️
+
+* @dablenparty made their first contribution
+
 ## [0.2.5](https://github.com/dablenparty/boxunbox/compare/v0.2.4..v0.2.5) - 2025-10-29
 
 ### 🐛 Bug Fixes
@@ -13,12 +47,9 @@
 
 ### ⚙️ Miscellaneous Tasks
 
-- Bump version (v0.2.5) - ([e8ad7e8](https://github.com/dablenparty/boxunbox/commit/e8ad7e8a19d8f262c639df3f0308ec4cfbbbba6f))
+- Bump version (v0.2.5) - ([2a1f254](https://github.com/dablenparty/boxunbox/commit/2a1f254e2e9850185de3e915bcda7df7bd40a0d2))
 - PKGBUILD v0.2.4 - ([777123e](https://github.com/dablenparty/boxunbox/commit/777123e1f36423127c72ef7e6c4ffd745fc8281c))
 
-## New Contributors ❤️
-
-* @dablenparty made their first contribution
 
 ## [0.2.4](https://github.com/dablenparty/boxunbox/compare/v0.2.3..v0.2.4) - 2025-10-28
 
