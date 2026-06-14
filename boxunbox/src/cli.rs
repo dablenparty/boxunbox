@@ -67,6 +67,44 @@ pub enum ExistingFileStrategy {
 
 /// boxunbox is a symlinker inspired by GNU stow.
 #[derive(Clone, Debug, Parser)]
+#[command(name = "boxup", about, long_about = None, styles=__cli_styles(), version)]
+pub struct BoxUpCli {
+    /// Package (directory) to box up. Specify multiple directories to box multiple.
+    #[arg(required = true, value_parser = cli_parse_pathbuf, value_hint = ValueHint::DirPath)]
+    pub packages: Vec<PathBuf>,
+
+    /// When to show color.
+    #[arg(long = "color", default_value_t = ColorOverride::default(), value_name = "WHEN")]
+    pub color_override: ColorOverride,
+    /// Dry run; show the unboxing plan, but do not execute it.
+    #[arg(short = 'd', long)]
+    pub dry_run: bool,
+    /// Exclude file names with a regex. May be specified multiple times, overrides --include.
+    ///
+    /// When an exclude pattern is specified, all files are included by default unless they match
+    /// the pattern.
+    ///
+    /// Regex (regular expression) patterns are different from glob patterns. See regex(7) for
+    /// an explanation of syntax and <https://regex101.com/> for testing regex patterns.
+    #[arg(short = 'x', long = "exclude", value_name = "REGEX")]
+    pub exclude_pats: Vec<Regex>,
+    /// Include file names with a regex. May be specified multiple times.
+    ///
+    /// This is the opposite of --exclude. When an include pattern is specified, all files are
+    /// EXCLUDED by default unless they match the pattern.
+    ///
+    /// If both include AND exclude patterns exist, the include patterns are checked first and the
+    /// exclude patterns apply only to the included files. Therefore, if a file matches both an
+    /// include AND exclude pattern, it will ultimately be excluded.
+    #[arg(short, long = "include", value_name = "REGEX")]
+    pub include_pats: Vec<Regex>,
+    /// Do not remove the `.bub.last` file after boxing up a package.
+    #[arg(short, long)]
+    pub keep_last_file: bool,
+}
+
+/// boxunbox is a symlinker inspired by GNU stow.
+#[derive(Clone, Debug, Parser)]
 #[command(name = "unbox", about, long_about = None, styles=__cli_styles(), version)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct UnboxCli {
