@@ -159,6 +159,11 @@ impl<A: Into<PlannedLink>> FromIterator<A> for UnboxPlan {
 }
 
 impl PlannedLink {
+    #[must_use]
+    pub fn dest(&self) -> &'_ Path {
+        &self.dest
+    }
+
     /// Utility function that returns a modified [`PlannedLink::src`] that is relative to the
     /// parent of [`PlannedLink::dest`]. Both paths must be absolute before calling this function.
     ///
@@ -407,9 +412,11 @@ impl UnboxPlan {
         match self.efs {
             ExistingFileStrategy::Move => {
                 let dest_parent_new_name = generate_backup_file_name(problem_link);
-                fs::rename(problem_link, &dest_parent_new_name).map_err(|err| UnboxError::Io {
-                    pl: pl.clone(),
-                    source: err,
+                fs::rename(problem_link, &dest_parent_new_name).map_err(|err| {
+                    UnboxError::Unboxing {
+                        pl: pl.clone(),
+                        source: err,
+                    }
                 })?;
                 eprintln!(
                     "{}: circular reference renamed: {} -> {}",
@@ -420,7 +427,7 @@ impl UnboxPlan {
             }
 
             ExistingFileStrategy::Overwrite => {
-                fs::remove_file(problem_link).map_err(|err| UnboxError::Io {
+                fs::remove_file(problem_link).map_err(|err| UnboxError::Unboxing {
                     pl: pl.clone(),
                     source: err,
                 })?;
@@ -444,7 +451,7 @@ impl UnboxPlan {
             }
         }
 
-        fs::create_dir_all(problem_link).map_err(|err| UnboxError::Io {
+        fs::create_dir_all(problem_link).map_err(|err| UnboxError::Unboxing {
             pl: pl.clone(),
             source: err,
         })?;
@@ -487,7 +494,7 @@ impl UnboxPlan {
             // sorted in depth order, dirs first, so any parents of the parent should already be
             // handled.
             if dest_parent.is_symlink()
-                && fs::read_link(dest_parent).map_err(|err| UnboxError::Io {
+                && fs::read_link(dest_parent).map_err(|err| UnboxError::Unboxing {
                     pl: pl.clone(),
                     source: err,
                 })? == *src.parent().unwrap_or(src)
@@ -502,7 +509,7 @@ impl UnboxPlan {
                 Ok(md) => (true, md.is_symlink()),
                 Err(err) if err.kind() == io::ErrorKind::NotFound => (false, false),
                 Err(err) => {
-                    return Err(UnboxError::Io {
+                    return Err(UnboxError::Unboxing {
                         pl: pl.clone(),
                         source: err,
                     });
@@ -520,12 +527,12 @@ impl UnboxPlan {
                             "warn".yellow(),
                             replace_home_with_tilde(dest)
                         );
-                        fs::copy(dest, src).map_err(|err| UnboxError::Io {
+                        fs::copy(dest, src).map_err(|err| UnboxError::Unboxing {
                             pl: pl.clone(),
                             source: err,
                         })?;
                         // remove `dest` so that it can be replaced by a link
-                        fs::remove_file(dest).map_err(|err| UnboxError::Io {
+                        fs::remove_file(dest).map_err(|err| UnboxError::Unboxing {
                             pl: pl.clone(),
                             source: err,
                         })?;
@@ -551,7 +558,7 @@ impl UnboxPlan {
                             replace_home_with_tilde(dest),
                             replace_home_with_tilde(&new_dest)
                         );
-                        fs::rename(dest, new_dest).map_err(|err| UnboxError::Io {
+                        fs::rename(dest, new_dest).map_err(|err| UnboxError::Unboxing {
                             pl: pl.clone(),
                             source: err,
                         })?;
@@ -568,13 +575,13 @@ impl UnboxPlan {
                                 "warn".yellow(),
                                 replace_home_with_tilde(dest)
                             );
-                            fs::remove_dir_all(dest).map_err(|err| UnboxError::Io {
+                            fs::remove_dir_all(dest).map_err(|err| UnboxError::Unboxing {
                                 pl: pl.clone(),
                                 source: err,
                             })?;
                         } else {
                             // regular files and links
-                            fs::remove_file(dest).map_err(|err| UnboxError::Io {
+                            fs::remove_file(dest).map_err(|err| UnboxError::Unboxing {
                                 pl: pl.clone(),
                                 source: err,
                             })?;
@@ -592,7 +599,7 @@ impl UnboxPlan {
             #[cfg(not(debug_assertions))]
             let create_dirs = true;
 
-            pl.unbox(create_dirs).map_err(|err| UnboxError::Io {
+            pl.unbox(create_dirs).map_err(|err| UnboxError::Unboxing {
                 pl: pl.clone(),
                 source: err,
             })?;

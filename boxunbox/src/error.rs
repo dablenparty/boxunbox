@@ -37,8 +37,13 @@ pub enum UnboxError {
     #[error("failed to save TOML config")]
     ConfigWrite(#[from] ConfigWrite),
     #[error("failed to unbox {pl:?}")]
-    Io {
+    Unboxing {
         pl: PlannedLink,
+        source: std::io::Error,
+    },
+    #[error("IO error")]
+    Io {
+        path: std::path::PathBuf,
         source: std::io::Error,
     },
     #[error("failed to plan unboxing")]
