@@ -41,7 +41,7 @@ fn __exclude_pats_default() -> Vec<Regex> {
         vec![
             #[warn(deprecated_in_future)]
             Regex::new(r"\.unboxrc.*$").unwrap(),
-            Regex::new(r"\.bub\.toml$").unwrap(),
+            Regex::new(r"\.bub(\.\w+?)?\.(\w+)$").unwrap(),
             Regex::new(r"^\.git.*$").unwrap(),
             Regex::new(r"^(README|LICEN[CS]E|COPYING).*$").unwrap(),
         ]

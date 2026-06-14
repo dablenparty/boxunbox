@@ -3,7 +3,7 @@ exclude = [
     "^(README|LICEN[CS]E|COPYING).*$",
     '^\.git.*$',
     "^test_ignore.*$",
-    '\.bub\.toml$',
+    '\.bub(\.\w+?)?\.(\w+)$',
 ]
 include = []
 link_root = false

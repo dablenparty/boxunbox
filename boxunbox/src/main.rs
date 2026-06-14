@@ -1,5 +1,7 @@
 #![warn(clippy::all, clippy::pedantic)]
 
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::path::Path;
 
 use anyhow::Context;
@@ -56,6 +58,22 @@ fn unbox(package: &Path, cli: &UnboxCli) -> Result<(), UnboxError> {
         };
         println!("Successfully unboxed {} {links_noun}!", unboxed_links.len());
         // TODO: store list of unboxed files in cache file for boxing up later
+        let result_file = config.package.join(".bub.last");
+        let mut rfd = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&result_file)
+            .map_err(|err| UnboxError::Io {
+                path: result_file.clone(),
+                source: err,
+            })?;
+        for link in &unboxed_links {
+            println!("unboxed {link:?}");
+            writeln!(rfd, "{}", link.dest().display()).map_err(|err| UnboxError::Io {
+                path: result_file.clone(),
+                source: err,
+            })?;
+        }
     }
 
     Ok(())
