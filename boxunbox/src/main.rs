@@ -68,7 +68,6 @@ fn unbox(package: &Path, cli: &UnboxCli) -> Result<(), UnboxError> {
                 source: err,
             })?;
         for link in &unboxed_links {
-            println!("unboxed {link:?}");
             writeln!(rfd, "{}", link.dest().display()).map_err(|err| UnboxError::Io {
                 path: result_file.clone(),
                 source: err,
