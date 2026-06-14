@@ -120,7 +120,12 @@ An error is returned if an environment variable cannot be found.
 */
 pub fn expand_into_pathbuf<S: AsRef<str>>(s: S) -> anyhow::Result<PathBuf> {
     let s = s.as_ref();
-    let expanded = expandenv::expand(s).with_context(|| format!("failed to expand {s:?}"))?;
+    let expanded = expandenv::expand(s)
+        .with_context(|| format!("failed to expand envvars in {s:?}"))
+        .and_then(|s| {
+            expanduser::expanduser(&s)
+                .with_context(|| format!("failed to expand user home in {s:?}"))
+        })?;
     let cleaned = path_clean::clean(expanded);
     Ok(cleaned)
 }
