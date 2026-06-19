@@ -25,6 +25,7 @@ fn main() -> anyhow::Result<()> {
     // TODO: include/exclude patterns
     // TODO: dry run
     let BoxUpCli {
+        fail_fast,
         packages,
         color_override,
         keep_last_file,
@@ -67,8 +68,17 @@ fn main() -> anyhow::Result<()> {
             if path.is_dir() {
                 continue;
             } else {
-                fs::remove_file(path)
-                    .with_context(|| format!("failed to remove unboxed file: {path:?}"))?;
+                match fs::remove_file(path)
+                    .with_context(|| format!("failed to remove unboxed file: {path:?}"))
+                {
+                    Ok(()) => {}
+                    Err(err) if fail_fast => return Err(err),
+                    Err(err) => eprintln!(
+                        "{}: failed to remove {}: {err}",
+                        "warn".yellow(),
+                        path.display()
+                    ),
+                }
             }
             println!(
                 "successfully removed {}",

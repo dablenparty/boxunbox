@@ -88,6 +88,9 @@ pub struct BoxUpCli {
     /// an explanation of syntax and <https://regex101.com/> for testing regex patterns.
     #[arg(short = 'x', long = "exclude", value_name = "REGEX")]
     pub exclude_pats: Vec<Regex>,
+    /// When enabled, exits on the first error.
+    #[arg(short, long)]
+    pub fail_fast: bool,
     /// Include file names with a regex. May be specified multiple times.
     ///
     /// This is the opposite of --exclude. When an include pattern is specified, all files are
