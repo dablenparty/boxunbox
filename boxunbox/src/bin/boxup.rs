@@ -1,8 +1,8 @@
 use std::{
     collections::HashSet,
     fs::{self, OpenOptions},
-    io::{BufRead, BufReader},
-    path::PathBuf,
+    io::{self, BufRead, BufReader},
+    path::{Path, PathBuf},
 };
 
 use anyhow::Context;
@@ -15,6 +15,32 @@ use clap::Parser;
 use colored::Colorize;
 
 // FIXME: TESTING
+
+fn get_unboxed_paths(last_unboxing_file: impl AsRef<Path>) -> Result<Vec<PathBuf>, UnboxError> {
+    let last_unboxing_file = last_unboxing_file.as_ref();
+    let lufd = OpenOptions::new()
+        .create(false)
+        .read(true)
+        .open(last_unboxing_file)
+        .map_err(|err| UnboxError::Io {
+            path: last_unboxing_file.to_path_buf(),
+            source: err,
+        })?;
+    let bufreader = BufReader::new(lufd);
+    // read each line into a HashSet to deduplicate
+    let paths_set = bufreader
+        .lines()
+        .map(|res| {
+            res.map(PathBuf::from).map_err(|err| UnboxError::Io {
+                path: last_unboxing_file.to_path_buf(),
+                source: err,
+            })
+        })
+        .collect::<Result<HashSet<_>, _>>()?;
+    let mut paths_vec = Vec::from_iter(paths_set);
+    paths_vec.sort();
+    Ok(paths_vec)
+}
 
 fn main() -> anyhow::Result<()> {
     let cli = BoxUpCli::parse();
@@ -41,25 +67,8 @@ fn main() -> anyhow::Result<()> {
     for package in packages {
         let canon_package = dunce::canonicalize(package)?;
         let last_unboxing_file = canon_package.join(".bub.last");
-        let last_unboxed_paths = {
-            let lufd = OpenOptions::new()
-                .create(false)
-                .read(true)
-                .open(&last_unboxing_file)
-                .map_err(|err| UnboxError::Io {
-                    path: last_unboxing_file.clone(),
-                    source: err,
-                })?;
-            let bufreader = BufReader::new(lufd);
-            // read each line into a HashSet to deduplicate
-            let paths_set = bufreader
-                .lines()
-                .map(|res| res.map(PathBuf::from))
-                .collect::<Result<HashSet<_>, _>>()?;
-            let mut paths_vec = Vec::from_iter(paths_set);
-            paths_vec.sort();
-            paths_vec
-        };
+        let last_unboxed_paths = get_unboxed_paths(&last_unboxing_file)
+            .context("failed to read list of unboxed paths")?;
 
         #[cfg(debug_assertions)]
         println!("unboxed paths: {last_unboxed_paths:#?}");
